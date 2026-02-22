@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import prisma from '../db/prisma';
 
@@ -31,13 +32,40 @@ export async function authenticateApiKey(
   }
 
   try {
-    // Find all developers and check API key
-    // In production, you'd want to optimize this with a key prefix lookup
-    const developers = await prisma.developer.findMany();
+    // Hash the API key to create a lookup fingerprint (first 8 chars of SHA-256)
+    // This avoids iterating all developers for bcrypt comparison
+    const keyFingerprint = crypto.createHash('sha256').update(apiKey).digest('hex').slice(0, 16);
 
+    // Try fingerprint-based lookup first (fast path)
+    const developerByFingerprint = await prisma.developer.findFirst({
+      where: { apiKeyFingerprint: keyFingerprint }
+    });
+
+    if (developerByFingerprint) {
+      const isValid = await bcrypt.compare(apiKey, developerByFingerprint.apiKeyHash);
+      if (isValid) {
+        req.developer = {
+          id: developerByFingerprint.id,
+          email: developerByFingerprint.email,
+          companyName: developerByFingerprint.companyName,
+          plan: developerByFingerprint.plan
+        };
+        next();
+        return;
+      }
+    }
+
+    // Fallback: iterate all developers (for keys created before fingerprint was added)
+    const developers = await prisma.developer.findMany();
     for (const developer of developers) {
       const isValid = await bcrypt.compare(apiKey, developer.apiKeyHash);
       if (isValid) {
+        // Backfill fingerprint for future fast lookups
+        await prisma.developer.update({
+          where: { id: developer.id },
+          data: { apiKeyFingerprint: keyFingerprint }
+        }).catch(() => {}); // Non-blocking backfill
+
         req.developer = {
           id: developer.id,
           email: developer.email,
@@ -57,12 +85,9 @@ export async function authenticateApiKey(
 }
 
 export function generateApiKey(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = 'ats_'; // agent trust service prefix
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  // Use cryptographically secure random bytes instead of Math.random()
+  const randomBytes = crypto.randomBytes(32);
+  return 'ats_' + randomBytes.toString('base64url').slice(0, 32);
 }
 
 export async function hashApiKey(apiKey: string): Promise<string> {

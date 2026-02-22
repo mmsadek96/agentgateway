@@ -33,16 +33,18 @@ enum ReputationEventType {
 }
 
 model Developer {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  companyName String   @map("company_name")
-  apiKeyHash  String   @map("api_key_hash")
-  plan        Plan     @default(free)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  email             String   @unique
+  companyName       String   @map("company_name")
+  apiKeyHash        String   @map("api_key_hash")
+  apiKeyFingerprint String?  @map("api_key_fingerprint")
+  plan              Plan     @default(free)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   agents Agent[]
 
+  @@index([apiKeyFingerprint])
   @@map("developers")
 }
 

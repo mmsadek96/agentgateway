@@ -192,15 +192,19 @@ The scoring algorithm is open source: see `src/services/reputation.ts`.
 ## 5. Event Signing & Audit Trail
 
 ### Current Implementation
-- All reputation events are stored in a PostgreSQL database with timestamps
+- All reputation events are stored in both PostgreSQL and on-chain (Base L2)
+- Three UUPS-upgradeable smart contracts on Base mainnet:
+  - **AgentRegistry** (`0xb880bC6b0634812E85EC635B899cA197429069e8`) — agent records and reputation scores
+  - **CertificateRegistry** (`0xD3cAf18d292168075653322780EF961BF6394c11`) — certificate issuance/revocation with scope hashes
+  - **ReputationLedger** (`0x12181081eec99b541271f1915cD00111dB2f31c6`) — immutable audit trail of all reputation changes
 - Gateway reports include action type, outcome, metadata, and behavioral data
-- The Station maintains a full audit trail per agent
+- Dual-write pattern: API writes to both Prisma DB and Base L2 contracts (non-blocking)
+- On-chain data is publicly verifiable by anyone via BaseScan
 
 ### Planned (v2)
-- **Signed event receipts:** Every reputation change produces a cryptographically signed receipt
-- **Merkle tree commitment:** Periodic hash commitments to an immutable store (blockchain)
-- **Verifier SDKs:** Third parties can independently verify any agent's reputation history
+- **Verifier SDKs:** Third parties can independently verify any agent's reputation history directly from the chain
 - **Incident feed:** Real-time feed of compromised certificates, banned agents, and security events
+- **Multi-party signing:** Multiple Station operators for decentralized trust
 
 ---
 

@@ -55,14 +55,18 @@ npm run dev
 agentgateway/
 ├── src/                    # Station server
 │   ├── routes/             # API endpoints
-│   ├── services/           # Business logic
+│   ├── services/           # Business logic (+ blockchain.ts)
 │   ├── middleware/          # Auth, rate limiting
 │   ├── utils/              # Helpers (keys, etc.)
 │   ├── types/              # TypeScript interfaces
-│   └── public/             # Landing page
+│   └── public/             # Landing page + dashboard
+├── contracts/              # Solidity smart contracts (Base L2)
+│   ├── contracts/          # AgentRegistry, CertificateRegistry, ReputationLedger
+│   └── scripts/            # Deployment scripts
 ├── packages/
 │   ├── gateway/            # @agent-trust/gateway (Express middleware)
 │   └── agent-sdk/          # @agent-trust/sdk (Agent client library)
+├── examples/               # Demo scripts
 ├── prisma/                 # Database schema
 └── Dockerfile              # Production container
 ```

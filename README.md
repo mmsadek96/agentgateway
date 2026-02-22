@@ -47,20 +47,26 @@ Gateway → Station: "Here's what happened"    → Permanent record updated
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
 │  AI Agent   │────▶│  Trust Station   │◀────│   Gateway   │
 │  (SDK)      │     │  (This Server)   │     │ (Middleware) │
-└─────┬───────┘     └──────────────────┘     └──────┬──────┘
-      │                                              │
-      │         signed JWT certificate               │
-      └──────────────────────────────────────────────┘
-                    verify + execute
+└─────┬───────┘     └────────┬─────────┘     └──────┬──────┘
+      │                      │                       │
+      │         signed JWT   │  on-chain sync        │
+      └──────────certificate─┼───────────────────────┘
+                   verify    │   execute
+                      ┌──────▼──────────┐
+                      │  Base L2 Chain  │
+                      │  (Reputation +  │
+                      │   Certificates) │
+                      └─────────────────┘
 ```
 
-**Three components:**
+**Four components:**
 
 | Component | What it is | Who uses it |
 |-----------|-----------|-------------|
 | **Station** | Central trust registry & certificate authority | You (deploy once) |
 | **[@agent-trust/gateway](packages/gateway)** | Express middleware for your website | Website owners |
 | **[@agent-trust/sdk](packages/agent-sdk)** | Client library for AI agents | Agent developers |
+| **Base L2 Contracts** | On-chain reputation, certificates & audit ledger | Automatic (transparent) |
 
 ## Quick Start
 
@@ -322,6 +328,7 @@ npm run dev
 | `STATION_PUBLIC_KEY` | Yes | RSA public key (PEM) for verification |
 | `PORT` | No | Server port (default: 3000) |
 | `CERTIFICATE_EXPIRY_SECONDS` | No | JWT lifetime (default: 300) |
+| `BASE_PRIVATE_KEY` | No | Base L2 wallet key for on-chain writes (optional) |
 
 ## Use Cases
 
@@ -336,7 +343,7 @@ npm run dev
 - [x] Web dashboard for real-time agent monitoring
 - [x] ML-powered threat detection (prompt injection, malicious URLs)
 - [x] Real-time behavioral tracking (6 detection algorithms)
-- [ ] Blockchain integration (on-chain reputation, staking with real tokens)
+- [x] Blockchain integration — Base L2 on-chain reputation, certificates, and audit ledger
 - [ ] Webhook notifications for trust events
 - [ ] Advanced ML behavioral models
 - [ ] Agent-to-agent trust delegation

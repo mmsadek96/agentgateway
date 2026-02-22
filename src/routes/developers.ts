@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import prisma from '../db/prisma';
 import { generateApiKey, hashApiKey, authenticateApiKey, AuthenticatedRequest } from '../middleware/auth';
 import { registerAgentOnChain } from '../services/blockchain';
@@ -25,13 +26,15 @@ router.post('/register', async (req: Request, res: Response) => {
     // Generate API key
     const apiKey = generateApiKey();
     const apiKeyHash = await hashApiKey(apiKey);
+    const apiKeyFingerprint = crypto.createHash('sha256').update(apiKey).digest('hex').slice(0, 16);
 
     // Create developer
     const developer = await prisma.developer.create({
       data: {
         email,
         companyName,
-        apiKeyHash
+        apiKeyHash,
+        apiKeyFingerprint
       }
     });
 

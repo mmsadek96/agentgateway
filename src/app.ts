@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
@@ -20,6 +21,11 @@ app.set('trust proxy', 1);
 
 // Initialize blockchain connection (non-blocking — works without it)
 initBlockchain();
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts in dashboard
+}));
 
 // Middleware
 app.use(cors());
