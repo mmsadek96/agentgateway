@@ -180,6 +180,7 @@ Every agent starts at 50 and builds trust over time:
 | Success rate | up to +20 | Complete actions successfully |
 | Account age | +1/month (max +10) | Time in the system |
 | Failures | -5 each | Bad behavior costs you |
+| Momentum | -10 to +5 | Recent behavior velocity amplifies changes |
 
 ### The Certificate Flow
 
@@ -254,8 +255,38 @@ const gateway = createGateway({
 | `repeated_action` | Same action on loop (automation) |
 | `scope_violation` | Accessing actions above trust level |
 | `burst_detected` | Sudden activity spike after idle |
+| `velocity_spike` | Metric rate-of-change exceeds threshold (ramping attack) |
+| `accelerating_attack` | Metric acceleration indicates escalating threat |
+| `predictive_breach` | Forecasted score will breach block threshold in 30s |
 
 Each agent gets a **behavioral score (0-100)** per session. Violations degrade the score. Drop below threshold → **blocked mid-session**. Behavioral data is reported to the Station, so bad behavior follows the agent everywhere.
+
+### Derivative-Based Detection
+
+The gateway computes mathematical derivatives (velocity and acceleration) on behavioral metrics in real-time. This catches attacks that static thresholds miss:
+
+```typescript
+const gateway = createGateway({
+  // ... actions config ...
+  behavior: {
+    maxActionsPerMinute: 30,
+    derivatives: {
+      enabled: true,
+      velocityThresholds: { actions_per_minute: 8, failures_per_minute: 3 },
+      useAccelerationBlocking: true,
+      predictiveBlockingSeconds: 30,
+    }
+  }
+});
+```
+
+- **Velocity spike** — detects slow ramp-up attacks before they hit static limits
+- **Accelerating attack** — catches explosive probing and escalation patterns
+- **Predictive blocking** — forecasts behavioral score 30 seconds ahead and blocks before breach
+
+### Momentum-Based Reputation
+
+Reputation scoring includes a **momentum adjustment** based on recent behavior velocity. Rapid recent failures create negative momentum (up to -10), while consistent successes create positive momentum (up to +5). This means an agent that suddenly starts misbehaving gets penalized faster, and an agent with a strong recent track record gets rewarded.
 
 ### ML-Powered Threat Detection (Optional)
 
@@ -328,7 +359,7 @@ Monitor your Station in real-time at `/dashboard`:
 
 - [x] Web dashboard for real-time agent monitoring
 - [x] ML-powered threat detection (prompt injection, malicious URLs)
-- [x] Real-time behavioral tracking (6 detection algorithms)
+- [x] Real-time behavioral tracking (9 detection algorithms, including derivative-based detection)
 - [x] Blockchain integration — Base L2 on-chain reputation, certificates, and audit ledger
 - [ ] Webhook notifications for trust events
 - [ ] Advanced ML behavioral models

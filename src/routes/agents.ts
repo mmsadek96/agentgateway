@@ -37,7 +37,8 @@ router.get('/:agentId/reputation', authenticateApiKey, async (req: Authenticated
           vouches: factors.vouchBonus,
           successRate: factors.successRateBonus,
           accountAge: factors.ageBonus,
-          failurePenalty: -factors.failurePenalty
+          failurePenalty: -factors.failurePenalty,
+          momentum: factors.momentumAdjustment
         },
         recentHistory: history
       }

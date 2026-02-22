@@ -1,9 +1,13 @@
 {
   "name": "@agent-trust/gateway",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Express middleware that lets trusted AI agents interact with your website. Verifies cryptographic certificates, enforces scope manifests, checks reputation scores, reports behavior, and detects prompt injection attacks with ML.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"

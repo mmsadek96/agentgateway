@@ -8,6 +8,11 @@ Express middleware that lets trusted AI agents interact with your website. Part 
 npm install @agent-trust/gateway
 ```
 
+> **TypeScript users:** Types are included. You'll also need `@types/express` if you don't already have it:
+> ```bash
+> npm install -D @types/express
+> ```
+
 ## Quick Start
 
 ```typescript
