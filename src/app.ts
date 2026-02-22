@@ -12,7 +12,13 @@ import certificateRoutes from './routes/certificates';
 import wellknownRoutes from './routes/wellknown';
 import reportRoutes from './routes/reports';
 import dashboardRoutes from './routes/dashboard';
+import trustRoutes from './routes/trust';
+import marketRoutes from './routes/markets';
+import insuranceRoutes from './routes/insurance';
+import vouchNftRoutes from './routes/vouchNft';
+import governanceRoutes from './routes/governance';
 import { initBlockchain } from './services/blockchain';
+import { initDefiContracts } from './services/defi';
 
 const app = express();
 
@@ -21,6 +27,7 @@ app.set('trust proxy', 1);
 
 // Initialize blockchain connection (non-blocking — works without it)
 initBlockchain();
+initDefiContracts();
 
 // Security headers
 app.use(helmet({
@@ -63,6 +70,13 @@ app.use('/certificates', certificateRoutes);
 app.use('/.well-known', wellknownRoutes);
 app.use('/reports', reportRoutes);
 app.use('/dashboard', dashboardRoutes);
+
+// DeFi routes
+app.use('/trust', trustRoutes);
+app.use('/markets', marketRoutes);
+app.use('/insurance', insuranceRoutes);
+app.use('/vouches/nft', vouchNftRoutes);
+app.use('/governance', governanceRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

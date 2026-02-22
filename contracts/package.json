@@ -8,6 +8,8 @@
     "test": "hardhat test",
     "deploy:base": "hardhat run scripts/deploy.ts --network base",
     "deploy:base-sepolia": "hardhat run scripts/deploy.ts --network baseSepolia",
+    "deploy:defi": "hardhat run scripts/deployDefi.ts --network base",
+    "deploy:defi-sepolia": "hardhat run scripts/deployDefi.ts --network baseSepolia",
     "verify": "hardhat run scripts/verify.ts --network base"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import prisma from '../db/prisma';
+import { getDefiOverview, isDefiEnabled } from '../services/defi';
 
 const router = Router();
 
@@ -60,6 +61,7 @@ router.get('/api/overview', async (_req: Request, res: Response) => {
         },
         certificates: totalCertificates,
         gatewayReports: totalReports,
+        defi: isDefiEnabled() ? await getDefiOverview().catch(() => null) : null,
         timestamp: new Date().toISOString()
       }
     });

@@ -220,6 +220,27 @@ Every reputation score, certificate, and behavioral event is recorded on **Base*
 
 **Democratic design:** Only AgentTrust's operational wallet writes to the chain. Agents and developers never need wallets, never touch crypto. The blockchain is invisible infrastructure.
 
+### DeFi Derivatives Layer
+
+Reputation is a financial asset. Our DeFi layer transforms trust scores into composable, tradable instruments:
+
+| Contract | Address | What it does |
+|----------|---------|-------------|
+| **$TRUST Token** | [`0x70A9...0F2`](https://basescan.org/address/0x70A9fc13bA469b8D0CD0d50c1137c26327CAB0F2) | ERC-20 governance & staking token (1B max supply) |
+| **StakingVault** | [`0x055a...dD0`](https://basescan.org/address/0x055a8441F18B07Ae0F4967A2d114dB1D7059FdD0) | Liquid staking: $TRUST → stTRUST, 7-day cooldown |
+| **ReputationMarket** | [`0x75b0...adD`](https://basescan.org/address/0x75b023F18daF98B8AFE0F92d69BFe5bF82730adD) | Binary options on agent reputation scores |
+| **InsurancePool** | [`0x35E7...f88`](https://basescan.org/address/0x35E74a62D538325F50c635ad518E5ae469527f88) | Agent performance insurance (CDS) |
+| **VouchMarket** | [`0x19b1...f25`](https://basescan.org/address/0x19b1606219fA6F3C76d5753A2bc6C779a502bf25) | Tradable vouch NFTs (ERC-721) |
+| **TrustGovernor** | [`0x1e54...17B`](https://basescan.org/address/0x1e548DC82c7B4d362c84084bd92263BCA6ecf17B) | DAO governance — $TRUST holders vote on protocol |
+
+**Five DeFi primitives:**
+
+- **Liquid Staking** — Stake $TRUST, receive stTRUST receipt tokens. Stake without locking liquidity.
+- **Reputation Markets** — Bet on "Will Agent X reach score Y by time Z?" using $TRUST tokens.
+- **Agent Insurance** — Buy coverage against agent reputation drops. Score-triggered payouts.
+- **Tradable Vouches** — Vouches are ERC-721 NFTs with frozen voucher scores. Trade on any marketplace.
+- **DAO Governance** — 1 TRUST = 1 vote. Propose and vote on protocol parameter changes.
+
 ### Trust Mechanisms
 
 **Reputation** — Track record over time, stored on-chain. 100 successful orders? High trust. 3 chargebacks? Low trust. Permanently recorded on Base L2.
@@ -344,6 +365,16 @@ Monitor your Station in real-time at `/dashboard`:
 | `GET` | `/certificates/verify` | No | Verify a certificate |
 | `GET` | `/.well-known/station-keys` | No | Station's public key |
 | `GET` | `/.well-known/station-info` | No | Station metadata |
+| **DeFi** | | | |
+| `GET` | `/trust/stats` | No | $TRUST token stats |
+| `POST` | `/trust/stake` | Yes | Stake $TRUST for agent |
+| `GET` | `/trust/stake/:agentId` | Yes | Staking info |
+| `GET` | `/markets/stats` | No | Reputation market stats |
+| `POST` | `/markets/create` | Yes | Create binary options market |
+| `POST` | `/markets/:id/bet` | Yes | Place YES/NO bet |
+| `GET` | `/insurance/stats` | No | Insurance pool stats |
+| `POST` | `/insurance/buy` | Yes | Buy agent insurance policy |
+| `GET` | `/governance/overview` | No | Full DeFi ecosystem overview |
 
 **Full interactive docs:** [agentgateway-6f041c655eb3.herokuapp.com/docs](https://agentgateway-6f041c655eb3.herokuapp.com/docs)
 
@@ -361,6 +392,7 @@ Monitor your Station in real-time at `/dashboard`:
 - [x] ML-powered threat detection (prompt injection, malicious URLs)
 - [x] Real-time behavioral tracking (9 detection algorithms, including derivative-based detection)
 - [x] Blockchain integration — Base L2 on-chain reputation, certificates, and audit ledger
+- [x] DeFi derivatives layer — $TRUST token, liquid staking, reputation markets, agent insurance, vouch NFTs, DAO governance
 - [ ] Webhook notifications for trust events
 - [ ] Advanced ML behavioral models
 - [ ] Agent-to-agent trust delegation

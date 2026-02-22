@@ -62,13 +62,17 @@ model Agent {
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
-  developer        Developer         @relation(fields: [developerId], references: [id], onDelete: Cascade)
-  actions          Action[]
-  reputationEvents ReputationEvent[]
-  vouchesGiven     Vouch[]           @relation("VoucherAgent")
-  vouchesReceived  Vouch[]           @relation("VouchedAgent")
-  certificates     Certificate[]
-  gatewayReports   GatewayReport[]
+  developer         Developer              @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  actions           Action[]
+  reputationEvents  ReputationEvent[]
+  vouchesGiven      Vouch[]                @relation("VoucherAgent")
+  vouchesReceived   Vouch[]                @relation("VouchedAgent")
+  certificates      Certificate[]
+  gatewayReports    GatewayReport[]
+  tokenBalance      TokenBalance?
+  stakingRecord     StakingRecord?
+  repMarkets        ReputationMarketRecord[]
+  insurancePolicies InsurancePolicyRecord[]
 
   @@unique([developerId, externalId])
   @@map("agents")
@@ -148,4 +152,85 @@ model GatewayReport {
   @@index([agentId])
   @@index([gatewayId])
   @@map("gateway_reports")
+}
+
+// ════════════════════════════════════════════════════
+// DeFi Models — Financial Derivatives Layer
+// ════════════════════════════════════════════════════
+
+model TokenBalance {
+  id      String  @id @default(uuid())
+  agentId String  @unique @map("agent_id")
+  trust   Decimal @default(0) @db.Decimal(36, 18)
+  stTrust Decimal @default(0) @db.Decimal(36, 18)
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("token_balances")
+}
+
+model StakingRecord {
+  id                   String    @id @default(uuid())
+  agentId              String    @unique @map("agent_id")
+  stakedAmount         Decimal   @default(0) @db.Decimal(36, 18)
+  unstakeRequestAmount Decimal   @default(0) @db.Decimal(36, 18)
+  unstakeRequestTime   DateTime? @map("unstake_request_time")
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("staking_records")
+}
+
+model ReputationMarketRecord {
+  id          String   @id @default(uuid())
+  marketId    Int      @unique @map("market_id")
+  agentId     String   @map("agent_id")
+  targetScore Int      @map("target_score")
+  expiresAt   DateTime @map("expires_at")
+  yesPool     Decimal  @default(0) @db.Decimal(36, 18)
+  noPool      Decimal  @default(0) @db.Decimal(36, 18)
+  settled     Boolean  @default(false)
+  outcome     Boolean?
+  finalScore  Int?     @map("final_score")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  agent     Agent            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  positions MarketPosition[]
+
+  @@index([agentId])
+  @@map("reputation_markets")
+}
+
+model MarketPosition {
+  id       String  @id @default(uuid())
+  marketId String  @map("market_id")
+  agentId  String  @map("agent_id")
+  side     String  // "yes" or "no"
+  amount   Decimal @db.Decimal(36, 18)
+  claimed  Boolean @default(false)
+
+  market ReputationMarketRecord @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+  @@index([agentId])
+  @@map("market_positions")
+}
+
+model InsurancePolicyRecord {
+  id             String   @id @default(uuid())
+  policyId       Int      @unique @map("policy_id")
+  agentId        String   @map("agent_id")
+  insuredAgentId String   @map("insured_agent_id")
+  coverageAmount Decimal  @db.Decimal(36, 18)
+  premiumPaid    Decimal  @db.Decimal(36, 18)
+  triggerScore   Int      @map("trigger_score")
+  expiresAt      DateTime @map("expires_at")
+  claimed        Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@map("insurance_policies")
 }
