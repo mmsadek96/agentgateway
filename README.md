@@ -316,9 +316,9 @@ Monitor your Station in real-time at `/dashboard`:
 
 **Full interactive docs:** [agentgateway-6f041c655eb3.herokuapp.com/docs](https://agentgateway-6f041c655eb3.herokuapp.com/docs)
 
-## Self-Hosting
+## Self-Hosting / Local Development
 
-Want to run your own Station?
+Want to run your own Station or contribute to the project?
 
 ```bash
 git clone https://github.com/mmsadek96/agentgateway.git

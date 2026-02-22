@@ -6,7 +6,7 @@ const options: swaggerJsdoc.Options = {
     info: {
       title: 'AgentTrust API',
       version: '1.0.0',
-      description: 'The trust layer for the AI agent economy. Reputation scoring, staking, vouching, and cryptographic certificates for AI agents.',
+      description: 'The blockchain-backed trust layer for the AI agent economy. Reputation scoring, vouching, and cryptographic certificates for AI agents — recorded on Base L2.',
     },
     servers: [
       {
