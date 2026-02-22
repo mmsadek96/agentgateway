@@ -39,15 +39,22 @@ contract TrustToken is
     /// @notice Addresses approved to mint (e.g., StakingVault for staking rewards)
     mapping(address => bool) public minters;
 
+    /// @notice Per-minter allowance tracking (M-5 fix)
+    mapping(address => uint256) public minterAllowance;
+    /// @notice Amount minted by each minter
+    mapping(address => uint256) public minterMinted;
+
     // ─── Events ───
 
-    event MinterAdded(address indexed minter);
+    event MinterAdded(address indexed minter, uint256 allowance);
     event MinterRemoved(address indexed minter);
+    event MinterAllowanceUpdated(address indexed minter, uint256 newAllowance);
 
     // ─── Errors ───
 
     error ExceedsMaxSupply(uint256 requested, uint256 remaining);
     error NotMinter(address caller);
+    error ExceedsMinterAllowance(address minter, uint256 requested, uint256 remaining);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -77,18 +84,40 @@ contract TrustToken is
         if (totalSupply() + amount > MAX_SUPPLY) {
             revert ExceedsMaxSupply(amount, MAX_SUPPLY - totalSupply());
         }
+
+        // M-5 fix: Track minter allowance (owner is unrestricted)
+        if (msg.sender != owner()) {
+            uint256 remaining = minterAllowance[msg.sender] - minterMinted[msg.sender];
+            if (amount > remaining) {
+                revert ExceedsMinterAllowance(msg.sender, amount, remaining);
+            }
+            minterMinted[msg.sender] += amount;
+        }
+
         _mint(to, amount);
     }
 
     // ─── Minter Management ───
 
     /**
-     * @notice Add an approved minter address.
+     * @notice Add an approved minter address with a minting allowance.
      * @param minter Address to approve for minting
+     * @param allowance Maximum amount this minter can mint (18 decimals)
      */
-    function addMinter(address minter) external onlyOwner {
+    function addMinter(address minter, uint256 allowance) external onlyOwner {
         minters[minter] = true;
-        emit MinterAdded(minter);
+        minterAllowance[minter] = allowance;
+        emit MinterAdded(minter, allowance);
+    }
+
+    /**
+     * @notice Update a minter's allowance.
+     * @param minter Address to update
+     * @param allowance New allowance
+     */
+    function setMinterAllowance(address minter, uint256 allowance) external onlyOwner {
+        minterAllowance[minter] = allowance;
+        emit MinterAllowanceUpdated(minter, allowance);
     }
 
     /**
@@ -97,6 +126,7 @@ contract TrustToken is
      */
     function removeMinter(address minter) external onlyOwner {
         minters[minter] = false;
+        minterAllowance[minter] = 0;
         emit MinterRemoved(minter);
     }
 
@@ -107,6 +137,15 @@ contract TrustToken is
      */
     function mintableSupply() external view returns (uint256) {
         return MAX_SUPPLY - totalSupply();
+    }
+
+    /**
+     * @notice How many tokens a minter can still mint within their allowance.
+     * @param minter Address to check
+     */
+    function minterRemainingAllowance(address minter) external view returns (uint256) {
+        if (!minters[minter]) return 0;
+        return minterAllowance[minter] - minterMinted[minter];
     }
 
     // ─── Required Overrides (ERC20 + Votes + Permit) ───

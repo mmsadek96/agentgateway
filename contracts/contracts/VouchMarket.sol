@@ -56,6 +56,9 @@ contract VouchMarket is
     uint256 public totalVouches;
     uint256 public totalActive;
 
+    /// @notice Maximum vouches to iterate in view functions (gas protection)
+    uint256 public constant MAX_VOUCH_ITERATION = 100;
+
     // ─── Events ───
 
     event VouchMinted(
@@ -191,7 +194,8 @@ contract VouchMarket is
      */
     function getActiveVouchCount(bytes32 agentId) external view returns (uint256 count) {
         uint256[] storage tokenIds = agentVouches[agentId];
-        for (uint256 i = 0; i < tokenIds.length; i++) {
+        uint256 len = tokenIds.length > MAX_VOUCH_ITERATION ? MAX_VOUCH_ITERATION : tokenIds.length;
+        for (uint256 i = 0; i < len; i++) {
             if (vouchData[tokenIds[i]].active) {
                 count++;
             }
@@ -216,8 +220,9 @@ contract VouchMarket is
     function getVouchScore(bytes32 agentId) external view returns (uint16 bonus) {
         uint256[] storage tokenIds = agentVouches[agentId];
         uint256 weightedCount = 0;
+        uint256 len = tokenIds.length > MAX_VOUCH_ITERATION ? MAX_VOUCH_ITERATION : tokenIds.length;
 
-        for (uint256 i = 0; i < tokenIds.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             VouchData storage v = vouchData[tokenIds[i]];
             if (v.active) {
                 // Weight contributes: a weight-5 vouch from a 900-score agent > weight-1 from 600-score

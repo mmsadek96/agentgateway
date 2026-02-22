@@ -39,6 +39,14 @@ contract TrustGovernor is
     /// @notice Quorum: 4% of total supply
     uint256 public quorumBps;
 
+    /// @notice Minimum acceptable timelock delay: 1 hour
+    uint256 public constant MIN_TIMELOCK_DELAY = 1 hours;
+
+    // ─── Errors ───
+
+    error TimelockDelayTooLow(uint256 actual, uint256 minimum);
+    error QuorumBpsOutOfRange(uint256 bps);
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -53,6 +61,12 @@ contract TrustGovernor is
         IVotes _token,
         TimelockControllerUpgradeable _timelock
     ) public initializer {
+        // H-4 fix: Verify timelock has a minimum delay to prevent instant execution
+        uint256 timelockDelay = _timelock.getMinDelay();
+        if (timelockDelay < MIN_TIMELOCK_DELAY) {
+            revert TimelockDelayTooLow(timelockDelay, MIN_TIMELOCK_DELAY);
+        }
+
         __Governor_init("TrustGovernor");
         __GovernorSettings_init(
             7200,     // votingDelay: ~1 day (7200 blocks at 12s)
@@ -81,9 +95,10 @@ contract TrustGovernor is
 
     /**
      * @notice Update the quorum percentage (basis points). Only via governance.
-     * @param _bps New quorum in basis points (e.g., 400 = 4%)
+     * @param _bps New quorum in basis points (e.g., 400 = 4%). Range: 1-5000 (0.01% - 50%)
      */
     function setQuorumBps(uint256 _bps) external onlyGovernance {
+        if (_bps == 0 || _bps > 5000) revert QuorumBpsOutOfRange(_bps);
         quorumBps = _bps;
     }
 

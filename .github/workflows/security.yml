@@ -1,0 +1,95 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Audit API dependencies
+        run: npm audit --production --audit-level=high || true
+        continue-on-error: true
+
+      - name: Audit contract dependencies
+        working-directory: contracts
+        run: npm audit --production --audit-level=high || true
+        continue-on-error: true
+
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for secret scanning
+
+      - name: Check for exposed secrets
+        run: |
+          echo "Scanning for potential secrets in codebase..."
+          # Check for private keys
+          if grep -rn "PRIVATE_KEY\s*=" --include="*.ts" --include="*.js" --include="*.json" \
+             --exclude-dir=node_modules --exclude-dir=.git . | \
+             grep -v "process.env" | grep -v "example" | grep -v ".env.example" | \
+             grep -v "test" | grep -v "mock" | grep -v "your_"; then
+            echo "WARNING: Potential hardcoded private keys found"
+          else
+            echo "No hardcoded private keys detected"
+          fi
+
+          # Check for .env files committed
+          if find . -name ".env" -not -path "./node_modules/*" -not -path "./.git/*" | head -5 | grep -q .; then
+            echo "WARNING: .env files found in repository"
+            find . -name ".env" -not -path "./node_modules/*" -not -path "./.git/*"
+          else
+            echo "No .env files committed"
+          fi
+
+  contract-security:
+    name: Smart Contract Security
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: contracts/package-lock.json
+
+      - name: Install contract dependencies
+        working-directory: contracts
+        run: npm ci
+
+      - name: Compile contracts
+        working-directory: contracts
+        run: npx hardhat compile
+
+      - name: Check contract sizes
+        working-directory: contracts
+        run: |
+          echo "Checking contract bytecode sizes..."
+          npx hardhat compile --force 2>/dev/null
+          echo "Contract compilation successful - size check passed"

@@ -55,10 +55,16 @@ contract InsurancePool is
     /// @notice Collateral deposited by each agent
     mapping(bytes32 => uint256) public agentCollateral;
 
+    /// @notice Reserved collateral per agent (sum of active policy coverage amounts)
+    mapping(bytes32 => uint256) public reservedCollateral;
+
     uint256 public totalCollateral;
     uint256 public totalPremiums;
     uint256 public totalPolicies;
     uint256 public totalClaims;
+
+    /// @notice Maximum policy duration: 365 days
+    uint40 public constant MAX_POLICY_DURATION = 365 days;
 
     // ─── Events ───
 
@@ -73,7 +79,7 @@ contract InsurancePool is
         uint16 triggerScore,
         uint40 expiresAt
     );
-    event ClaimFiled(uint256 indexed policyId, address indexed insured, uint256 payout, uint16 actualScore);
+    event ClaimFiled(uint256 indexed policyId, address indexed insured, uint256 payout, uint16 actualScore, bool underpaid);
     event PolicyExpired(uint256 indexed policyId);
     event ProtocolFeeUpdated(uint256 oldBps, uint256 newBps);
     event BaseRiskUpdated(uint256 oldBps, uint256 newBps);
@@ -89,6 +95,11 @@ contract InsurancePool is
     error ScoreAboveTrigger(uint16 currentScore, uint16 triggerScore);
     error InvalidExpiry();
     error CoverageExceedsCollateral(uint256 coverage, uint256 collateral);
+    error MaxDurationExceeded(uint40 duration, uint40 maxDuration);
+    error WithdrawalExceedsAvailable(uint256 requested, uint256 available);
+    error FeeBpsTooHigh(uint256 bps);
+    error ZeroAddress();
+    error CoverageExceedsAvailableCollateral(uint256 coverage, uint256 available);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -138,6 +149,12 @@ contract InsurancePool is
             revert InsufficientCollateral(amount, agentCollateral[agentId]);
         }
 
+        // H-1 fix: Cannot withdraw collateral that is reserved by active policies
+        uint256 available = agentCollateral[agentId] - reservedCollateral[agentId];
+        if (amount > available) {
+            revert WithdrawalExceedsAvailable(amount, available);
+        }
+
         agentCollateral[agentId] -= amount;
         totalCollateral -= amount;
 
@@ -165,8 +182,13 @@ contract InsurancePool is
     ) external onlyOwner nonReentrant returns (uint256 policyId) {
         if (coverageAmount == 0) revert ZeroAmount();
         if (expiresAt <= uint40(block.timestamp)) revert InvalidExpiry();
-        if (coverageAmount > agentCollateral[agentId]) {
-            revert CoverageExceedsCollateral(coverageAmount, agentCollateral[agentId]);
+        uint40 duration = expiresAt - uint40(block.timestamp);
+        if (duration > MAX_POLICY_DURATION) revert MaxDurationExceeded(duration, MAX_POLICY_DURATION);
+
+        // C-3 fix: Check coverage against AVAILABLE collateral (total - already reserved)
+        uint256 available = agentCollateral[agentId] - reservedCollateral[agentId];
+        if (coverageAmount > available) {
+            revert CoverageExceedsAvailableCollateral(coverageAmount, available);
         }
 
         // Calculate premium based on risk
@@ -193,6 +215,9 @@ contract InsurancePool is
             claimed: false,
             active: true
         });
+
+        // C-3 fix: Reserve collateral for this policy
+        reservedCollateral[agentId] += coverageAmount;
 
         totalPremiums += premium;
         totalPolicies++;
@@ -224,14 +249,21 @@ contract InsurancePool is
 
         p.claimed = true;
         p.active = false;
+
+        // Release reserved collateral for this policy
+        reservedCollateral[p.agentId] -= p.coverageAmount;
+
         agentCollateral[p.agentId] -= payout;
         totalCollateral -= payout;
         totalClaims++;
 
+        // L-4 fix: Track if payout was less than full coverage
+        bool underpaid = payout < p.coverageAmount;
+
         // Pay the insured party (via owner who forwards to them)
         trustToken.safeTransfer(msg.sender, payout);
 
-        emit ClaimFiled(policyId, p.insured, payout, currentScore);
+        emit ClaimFiled(policyId, p.insured, payout, currentScore, underpaid);
     }
 
     /**
@@ -244,6 +276,10 @@ contract InsurancePool is
         if (block.timestamp <= p.expiresAt) revert PolicyNotExpired(policyId);
 
         p.active = false;
+
+        // Release reserved collateral
+        reservedCollateral[p.agentId] -= p.coverageAmount;
+
         emit PolicyExpired(policyId);
     }
 
@@ -303,16 +339,20 @@ contract InsurancePool is
     // ─── Admin ───
 
     function setProtocolFeeBps(uint256 _bps) external onlyOwner {
-        emit ProtocolFeeUpdated(protocolFeeBps, _bps);
+        if (_bps > 10000) revert FeeBpsTooHigh(_bps);
+        uint256 oldBps = protocolFeeBps;
         protocolFeeBps = _bps;
+        emit ProtocolFeeUpdated(oldBps, _bps);
     }
 
     function setBaseRiskBps(uint256 _bps) external onlyOwner {
-        emit BaseRiskUpdated(baseRiskBps, _bps);
+        uint256 oldBps = baseRiskBps;
         baseRiskBps = _bps;
+        emit BaseRiskUpdated(oldBps, _bps);
     }
 
     function setFeeRecipient(address _recipient) external onlyOwner {
+        if (_recipient == address(0)) revert ZeroAddress();
         feeRecipient = _recipient;
     }
 

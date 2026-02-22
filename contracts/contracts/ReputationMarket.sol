@@ -52,6 +52,9 @@ contract ReputationMarket is
     uint256 public totalMarkets;
     uint256 public totalVolume;
 
+    /// @notice Maximum market duration: 365 days
+    uint40 public constant MAX_MARKET_DURATION = 365 days;
+
     // ─── Events ───
 
     event MarketCreated(uint256 indexed marketId, bytes32 indexed agentId, uint16 targetScore, uint40 expiresAt);
@@ -70,6 +73,10 @@ contract ReputationMarket is
     error AlreadyClaimed(uint256 marketId, address claimant);
     error ZeroAmount();
     error InvalidExpiry();
+    error MaxDurationExceeded(uint40 duration, uint40 maxDuration);
+    error WinnerPoolEmpty(uint256 marketId);
+    error FeeBpsTooHigh(uint256 bps);
+    error ZeroAddress();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -104,6 +111,8 @@ contract ReputationMarket is
         uint40 expiresAt
     ) external onlyOwner returns (uint256 marketId) {
         if (expiresAt <= uint40(block.timestamp)) revert InvalidExpiry();
+        uint40 duration = expiresAt - uint40(block.timestamp);
+        if (duration > MAX_MARKET_DURATION) revert MaxDurationExceeded(duration, MAX_MARKET_DURATION);
 
         marketId = nextMarketId++;
         markets[marketId] = Market({
@@ -212,13 +221,16 @@ contract ReputationMarket is
             loserPool = m.yesPool;
         }
 
+        // Guard against division by zero (C-2 fix)
+        if (winnerPool == 0) revert WinnerPoolEmpty(marketId);
+
         // Pro-rata share of the loser pool
         uint256 winnings = (position * loserPool) / winnerPool;
         uint256 fee = (winnings * protocolFeeBps) / 10000;
         uint256 payout = position + winnings - fee;
 
         // Pay protocol fee
-        if (fee > 0) {
+        if (fee > 0 && feeRecipient != address(0)) {
             trustToken.safeTransfer(feeRecipient, fee);
         }
 
@@ -251,11 +263,14 @@ contract ReputationMarket is
     // ─── Admin ───
 
     function setProtocolFeeBps(uint256 _bps) external onlyOwner {
-        emit ProtocolFeeUpdated(protocolFeeBps, _bps);
+        if (_bps > 10000) revert FeeBpsTooHigh(_bps);
+        uint256 oldBps = protocolFeeBps;
         protocolFeeBps = _bps;
+        emit ProtocolFeeUpdated(oldBps, _bps);
     }
 
     function setFeeRecipient(address _recipient) external onlyOwner {
+        if (_recipient == address(0)) revert ZeroAddress();
         feeRecipient = _recipient;
     }
 

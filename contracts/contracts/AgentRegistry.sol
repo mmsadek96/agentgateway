@@ -76,6 +76,8 @@ contract AgentRegistry is UUPSUpgradeable, OwnableUpgradeable {
     ) external onlyOwner {
         Agent storage agent = agents[agentId];
         require(agent.registeredAt != 0, "Not found");
+        require(newScore <= 1000, "Score exceeds max 1000");
+        require(newSuccessRate <= 1000, "Success rate exceeds max 1000");
 
         uint16 oldScore = agent.reputationScore;
         agent.reputationScore = newScore;
@@ -102,6 +104,8 @@ contract AgentRegistry is UUPSUpgradeable, OwnableUpgradeable {
         for (uint256 i = 0; i < _agentIds.length; i++) {
             Agent storage agent = agents[_agentIds[i]];
             if (agent.registeredAt == 0) continue;
+            require(newScores[i] <= 1000, "Score exceeds max 1000");
+            require(newSuccessRates[i] <= 1000, "Success rate exceeds max 1000");
 
             uint16 oldScore = agent.reputationScore;
             agent.reputationScore = newScores[i];
@@ -120,6 +124,7 @@ contract AgentRegistry is UUPSUpgradeable, OwnableUpgradeable {
     ) external onlyOwner {
         Agent storage agent = agents[agentId];
         require(agent.registeredAt != 0, "Not found");
+        require(newStatus <= 3, "Invalid status (0-3)");
 
         uint8 oldStatus = agent.status;
         if (oldStatus == 1 && newStatus != 1) activeAgents--;
@@ -147,8 +152,9 @@ contract AgentRegistry is UUPSUpgradeable, OwnableUpgradeable {
         }
         agent.lastUpdated = uint40(block.timestamp);
 
+        uint16 newScore = agent.reputationScore;
+        emit ReputationUpdated(agentId, oldScore, newScore, uint40(block.timestamp));
         emit AgentSlashed(agentId, scorePenalty, reason, uint40(block.timestamp));
-        emit ReputationUpdated(agentId, oldScore, agent.reputationScore, uint40(block.timestamp));
     }
 
     // --- Free read functions ---

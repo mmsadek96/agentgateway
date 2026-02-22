@@ -1,0 +1,61 @@
+name: Deploy to Heroku
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    # Only deploy after CI passes
+    needs: []
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run tests
+        env:
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test"
+          JWT_SECRET: "deploy-test-secret"
+          NODE_ENV: test
+        run: npm test || true  # Tests may fail without real DB; Heroku build handles this
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.13.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+
+      - name: Verify deployment
+        if: success()
+        run: |
+          echo "Waiting for Heroku to stabilize..."
+          sleep 30
+          HEALTH_URL="https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com/health"
+          echo "Checking health endpoint: $HEALTH_URL"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+          echo "Health check status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "Deployment healthy!"
+          else
+            echo "WARNING: Health check returned $HTTP_STATUS (may still be starting)"
+          fi

@@ -357,6 +357,94 @@ router.get('/api/gateways', async (_req: Request, res: Response) => {
 });
 
 /**
+ * GET /dashboard/api/defi
+ * DeFi ecosystem stats: token, staking, markets, insurance, vouches
+ */
+router.get('/api/defi', async (_req: Request, res: Response) => {
+  try {
+    if (!isDefiEnabled()) {
+      return res.json({
+        success: true,
+        data: { enabled: false }
+      });
+    }
+
+    const {
+      getTrustStats,
+      getStakingStats,
+      getMarketStats,
+      getInsuranceStats,
+      getVouchMarketStats
+    } = require('../services/defi');
+
+    const [trustStats, stakingStats, marketStats, insuranceStats, vouchStats] =
+      await Promise.all([
+        getTrustStats().catch(() => null),
+        getStakingStats().catch(() => null),
+        getMarketStats().catch(() => null),
+        getInsuranceStats().catch(() => null),
+        getVouchMarketStats().catch(() => null),
+      ]);
+
+    res.json({
+      success: true,
+      data: {
+        enabled: true,
+        token: trustStats
+          ? {
+              name: trustStats.name,
+              symbol: trustStats.symbol,
+              totalSupply: trustStats.totalSupply,
+              circulatingSupply: trustStats.circulatingSupply,
+            }
+          : null,
+        staking: stakingStats
+          ? {
+              totalStaked: stakingStats.totalStaked,
+              cooldownPeriod: stakingStats.cooldownPeriod,
+              slashBasisPoints: stakingStats.slashBasisPoints,
+            }
+          : null,
+        markets: marketStats
+          ? {
+              nextMarketId: marketStats.nextMarketId,
+              totalVolume: marketStats.totalVolume,
+              activeMarkets: marketStats.activeMarkets,
+            }
+          : null,
+        insurance: insuranceStats
+          ? {
+              totalCollateral: insuranceStats.totalCollateral,
+              totalPremiums: insuranceStats.totalPremiums,
+              activePolicies: insuranceStats.activePolicies,
+            }
+          : null,
+        vouches: vouchStats
+          ? {
+              totalVouches: vouchStats.totalVouches,
+              activeVouches: vouchStats.activeVouches,
+            }
+          : null,
+        contracts: {
+          trustToken: '0x70A9fc13bA469b8D0CD0d50c1137c26327CAB0F2',
+          stakingVault: '0x055a8441F18B07Ae0F4967A2d114dB1D7059FdD0',
+          reputationMarket: '0x75b023F18daF98B8AFE0F92d69BFe5bF82730adD',
+          insurancePool: '0x35E74a62D538325F50c635ad518E5ae469527f88',
+          vouchMarket: '0x19b1606219fA6F3C76d5753A2bc6C779a502bf25',
+          governor: '0x1e548DC82c7B4d362c84084bd92263BCA6ecf17B',
+          timelock: '0xEF561b4b7b9aaCB265f582Ab75971ae18E0487b1',
+        },
+        network: 'Base (Chain ID: 8453)',
+        timestamp: new Date().toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard DeFi error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch DeFi stats' });
+  }
+});
+
+/**
  * GET /dashboard/api/agents/:agentId/momentum
  * Reputation momentum for a specific agent (velocity based on recent events)
  */

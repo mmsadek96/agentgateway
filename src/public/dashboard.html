@@ -877,6 +877,346 @@
       outline: 2px solid var(--primary);
       outline-offset: 2px;
     }
+
+    /* --- DeFi Section --- */
+    .defi-section {
+      margin-bottom: 28px;
+    }
+
+    .defi-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .defi-section-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .defi-section-header h2 .chain-badge {
+      font-size: 10px;
+      padding: 3px 10px;
+      background: rgba(59, 130, 246, 0.08);
+      color: var(--primary);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .defi-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .defi-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      transition: all var(--transition-base);
+    }
+
+    .defi-stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      opacity: 0.7;
+      transition: opacity var(--transition-base);
+    }
+
+    .defi-stat-card:nth-child(1)::before { background: linear-gradient(135deg, #f59e0b, #eab308); }
+    .defi-stat-card:nth-child(2)::before { background: var(--gradient-success); }
+    .defi-stat-card:nth-child(3)::before { background: var(--gradient-purple); }
+    .defi-stat-card:nth-child(4)::before { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .defi-stat-card:nth-child(5)::before { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+
+    .defi-stat-card:hover {
+      border-color: rgba(59, 130, 246, 0.3);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card-hover), var(--shadow-glow);
+    }
+
+    .defi-stat-card:hover::before { opacity: 1; }
+
+    .defi-stat-icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+
+    .defi-stat-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .defi-stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.5px;
+    }
+
+    .defi-stat-value.gold { color: #eab308; }
+    .defi-stat-value.green { color: var(--success); }
+    .defi-stat-value.violet { color: var(--purple); }
+    .defi-stat-value.cyan { color: #06b6d4; }
+    .defi-stat-value.rose { color: #f43f5e; }
+
+    .defi-stat-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 5px;
+    }
+
+    /* DeFi Detail Grid */
+    .defi-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .defi-detail-card {
+      background: var(--bg-glass);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--bg-glass-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      transition: all var(--transition-base);
+    }
+
+    .defi-detail-card:hover {
+      border-color: rgba(255, 255, 255, 0.1);
+      box-shadow: var(--shadow-card-hover);
+    }
+
+    .defi-detail-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--bg-glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .defi-detail-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .defi-detail-body {
+      padding: 18px;
+    }
+
+    .defi-metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(42, 47, 62, 0.3);
+    }
+
+    .defi-metric-row:last-child {
+      border-bottom: none;
+    }
+
+    .defi-metric-label {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .defi-metric-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    /* Contract addresses */
+    .contract-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .contract-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+      border: 1px solid rgba(42, 47, 62, 0.4);
+      transition: all var(--transition-base);
+    }
+
+    .contract-item:hover {
+      border-color: rgba(59, 130, 246, 0.3);
+      background: rgba(59, 130, 246, 0.04);
+    }
+
+    .contract-name {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .contract-addr {
+      font-size: 11px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: var(--primary);
+      text-decoration: none;
+      transition: color var(--transition-base);
+      word-break: break-all;
+    }
+
+    .contract-addr:hover {
+      color: var(--text);
+    }
+
+    /* DeFi TVL Ring */
+    .tvl-ring-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      padding: 8px 0;
+    }
+
+    .tvl-ring {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+
+    .tvl-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .tvl-ring-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .tvl-ring-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .tvl-ring-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tvl-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tvl-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .tvl-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .tvl-legend-label {
+      color: var(--text-dim);
+      flex: 1;
+    }
+
+    .tvl-legend-value {
+      font-weight: 700;
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 11px;
+    }
+
+    /* DeFi disabled state */
+    .defi-disabled {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-dim);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+
+    .defi-disabled .icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    .defi-disabled p {
+      font-size: 13px;
+      max-width: 360px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 1200px) {
+      .defi-stats-grid { grid-template-columns: repeat(3, 1fr); }
+      .defi-detail-grid { grid-template-columns: 1fr 1fr; }
+      .contract-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 968px) {
+      .defi-stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .defi-detail-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 480px) {
+      .defi-stats-grid { grid-template-columns: 1fr; }
+      .defi-stat-value { font-size: 22px; }
+      .tvl-ring-container { flex-direction: column; }
+    }
   </style>
 </head>
 <body>
@@ -930,6 +1270,114 @@
         <div class="stat-label">Gateway Reports</div>
         <div class="stat-value primary" id="stat-reports">-</div>
         <div class="stat-sub">behavior reports</div>
+      </div>
+    </div>
+
+    <!-- DeFi Ecosystem Section -->
+    <div class="defi-section" id="defi-section">
+      <div class="defi-section-header">
+        <h2>
+          DeFi Ecosystem
+          <span class="chain-badge">Base L2</span>
+        </h2>
+        <button class="refresh-btn" onclick="loadDefi()">Refresh</button>
+      </div>
+
+      <!-- DeFi Stat Cards -->
+      <div class="defi-stats-grid" id="defi-stats-grid">
+        <div class="defi-stat-card">
+          <div class="defi-stat-icon">&#x1FA99;</div>
+          <div class="defi-stat-label">$TRUST Supply</div>
+          <div class="defi-stat-value gold" id="defi-supply">-</div>
+          <div class="defi-stat-sub" id="defi-supply-sub">loading...</div>
+        </div>
+        <div class="defi-stat-card">
+          <div class="defi-stat-icon">&#x1F4B0;</div>
+          <div class="defi-stat-label">Total Staked</div>
+          <div class="defi-stat-value green" id="defi-staked">-</div>
+          <div class="defi-stat-sub" id="defi-staked-sub">loading...</div>
+        </div>
+        <div class="defi-stat-card">
+          <div class="defi-stat-icon">&#x1F4C8;</div>
+          <div class="defi-stat-label">Active Markets</div>
+          <div class="defi-stat-value violet" id="defi-markets">-</div>
+          <div class="defi-stat-sub" id="defi-markets-sub">loading...</div>
+        </div>
+        <div class="defi-stat-card">
+          <div class="defi-stat-icon">&#x1F6E1;</div>
+          <div class="defi-stat-label">Insurance Pool</div>
+          <div class="defi-stat-value cyan" id="defi-insurance">-</div>
+          <div class="defi-stat-sub" id="defi-insurance-sub">loading...</div>
+        </div>
+        <div class="defi-stat-card">
+          <div class="defi-stat-icon">&#x1F91D;</div>
+          <div class="defi-stat-label">Vouch NFTs</div>
+          <div class="defi-stat-value rose" id="defi-vouches">-</div>
+          <div class="defi-stat-sub" id="defi-vouches-sub">loading...</div>
+        </div>
+      </div>
+
+      <!-- DeFi Detail Cards -->
+      <div class="defi-detail-grid">
+        <!-- TVL Breakdown -->
+        <div class="defi-detail-card">
+          <div class="defi-detail-header">
+            <span class="defi-detail-title">&#x1F4CA; TVL Breakdown</span>
+          </div>
+          <div class="defi-detail-body">
+            <div id="tvl-chart" class="tvl-ring-container">
+              <div class="skeleton-loading" style="width:100%;text-align:center;padding:30px 0;">
+                <div class="skeleton" style="width:120px;height:120px;border-radius:50%;margin:0 auto;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Staking Details -->
+        <div class="defi-detail-card">
+          <div class="defi-detail-header">
+            <span class="defi-detail-title">&#x26D3; Staking Vault</span>
+          </div>
+          <div class="defi-detail-body" id="staking-details">
+            <div class="skeleton-loading">
+              <div class="skeleton skeleton-line" style="width:100%"></div>
+              <div class="skeleton skeleton-line" style="width:80%"></div>
+              <div class="skeleton skeleton-line" style="width:90%"></div>
+              <div class="skeleton skeleton-line" style="width:60%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market & Insurance Details -->
+        <div class="defi-detail-card">
+          <div class="defi-detail-header">
+            <span class="defi-detail-title">&#x1F3E6; Markets & Insurance</span>
+          </div>
+          <div class="defi-detail-body" id="market-insurance-details">
+            <div class="skeleton-loading">
+              <div class="skeleton skeleton-line" style="width:100%"></div>
+              <div class="skeleton skeleton-line" style="width:75%"></div>
+              <div class="skeleton skeleton-line" style="width:85%"></div>
+              <div class="skeleton skeleton-line" style="width:65%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contract Addresses -->
+      <div class="defi-detail-card" style="margin-bottom: 20px;">
+        <div class="defi-detail-header">
+          <span class="defi-detail-title">&#x1F4DC; Verified Contracts (BaseScan)</span>
+          <span style="font-size: 10px; color: var(--text-dim);">Chain ID: 8453</span>
+        </div>
+        <div class="defi-detail-body">
+          <div class="contract-grid" id="contract-grid">
+            <div class="skeleton-loading" style="grid-column:1/-1;">
+              <div class="skeleton skeleton-line" style="width:100%"></div>
+              <div class="skeleton skeleton-line" style="width:90%"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1436,11 +1884,252 @@
       }
     }
 
+    // --- Load DeFi Ecosystem ---
+
+    function formatTokenAmount(raw, decimals = 18) {
+      if (!raw) return '0';
+      const num = parseFloat(raw) / Math.pow(10, decimals);
+      if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+      if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+      if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+      return num.toFixed(2);
+    }
+
+    function formatRawToken(raw) {
+      if (!raw) return '0';
+      const num = parseFloat(raw);
+      if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+      if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+      if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    function truncateAddr(addr) {
+      if (!addr) return '...';
+      return addr.slice(0, 6) + '...' + addr.slice(-4);
+    }
+
+    function buildTvlRing(stakingVal, marketVal, insuranceVal) {
+      const total = stakingVal + marketVal + insuranceVal;
+      if (total === 0) {
+        return `<div style="text-align:center;color:var(--text-dim);padding:24px;font-size:13px;">No TVL data yet</div>`;
+      }
+
+      const stakingPct = (stakingVal / total) * 100;
+      const marketPct = (marketVal / total) * 100;
+      const insurancePct = (insuranceVal / total) * 100;
+
+      const radius = 54;
+      const circumference = 2 * Math.PI * radius;
+
+      const seg1 = (stakingPct / 100) * circumference;
+      const seg2 = (marketPct / 100) * circumference;
+      const seg3 = (insurancePct / 100) * circumference;
+
+      const offset1 = 0;
+      const offset2 = seg1;
+      const offset3 = seg1 + seg2;
+
+      return `
+        <div class="tvl-ring">
+          <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="${radius}" fill="none" stroke="var(--border)" stroke-width="10" />
+            <circle cx="60" cy="60" r="${radius}" fill="none" stroke="#10b981" stroke-width="10"
+              stroke-dasharray="${seg1} ${circumference - seg1}"
+              stroke-dashoffset="${-offset1}" stroke-linecap="round" />
+            <circle cx="60" cy="60" r="${radius}" fill="none" stroke="#8b5cf6" stroke-width="10"
+              stroke-dasharray="${seg2} ${circumference - seg2}"
+              stroke-dashoffset="${-offset2}" />
+            <circle cx="60" cy="60" r="${radius}" fill="none" stroke="#06b6d4" stroke-width="10"
+              stroke-dasharray="${seg3} ${circumference - seg3}"
+              stroke-dashoffset="${-offset3}" />
+          </svg>
+          <div class="tvl-ring-center">
+            <div class="tvl-ring-value">${formatRawToken(total.toString())}</div>
+            <div class="tvl-ring-label">Total TVL</div>
+          </div>
+        </div>
+        <div class="tvl-legend">
+          <div class="tvl-legend-item">
+            <div class="tvl-legend-dot" style="background:#10b981;"></div>
+            <span class="tvl-legend-label">Staking</span>
+            <span class="tvl-legend-value">${formatRawToken(stakingVal.toString())} (${stakingPct.toFixed(1)}%)</span>
+          </div>
+          <div class="tvl-legend-item">
+            <div class="tvl-legend-dot" style="background:#8b5cf6;"></div>
+            <span class="tvl-legend-label">Markets</span>
+            <span class="tvl-legend-value">${formatRawToken(marketVal.toString())} (${marketPct.toFixed(1)}%)</span>
+          </div>
+          <div class="tvl-legend-item">
+            <div class="tvl-legend-dot" style="background:#06b6d4;"></div>
+            <span class="tvl-legend-label">Insurance</span>
+            <span class="tvl-legend-value">${formatRawToken(insuranceVal.toString())} (${insurancePct.toFixed(1)}%)</span>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadDefi() {
+      try {
+        const res = await fetch(BASE + '/defi');
+        const { data } = await res.json();
+
+        if (!data.enabled) {
+          document.getElementById('defi-section').innerHTML = `
+            <div class="defi-section-header">
+              <h2>DeFi Ecosystem <span class="chain-badge">Offline</span></h2>
+            </div>
+            <div class="defi-disabled">
+              <div class="icon">&#x1F512;</div>
+              <p>DeFi contracts are not connected. Set DEFI_PRIVATE_KEY and contract addresses in environment variables to enable.</p>
+            </div>`;
+          return;
+        }
+
+        // Token supply
+        const supplyEl = document.getElementById('defi-supply');
+        if (data.token) {
+          supplyEl.textContent = formatTokenAmount(data.token.totalSupply);
+          document.getElementById('defi-supply-sub').textContent =
+            `${data.token.symbol} | Circulating: ${formatTokenAmount(data.token.circulatingSupply)}`;
+        } else {
+          supplyEl.textContent = '-';
+          document.getElementById('defi-supply-sub').textContent = 'unavailable';
+        }
+
+        // Staking
+        const stakedEl = document.getElementById('defi-staked');
+        if (data.staking) {
+          stakedEl.textContent = formatRawToken(data.staking.totalStaked);
+          const cooldownDays = Math.round((data.staking.cooldownPeriod || 0) / 86400);
+          document.getElementById('defi-staked-sub').textContent =
+            `$TRUST staked | ${cooldownDays}d cooldown`;
+        } else {
+          stakedEl.textContent = '-';
+          document.getElementById('defi-staked-sub').textContent = 'unavailable';
+        }
+
+        // Markets
+        const marketsEl = document.getElementById('defi-markets');
+        if (data.markets) {
+          marketsEl.textContent = data.markets.activeMarkets;
+          document.getElementById('defi-markets-sub').textContent =
+            `${data.markets.nextMarketId} created | Vol: ${formatRawToken(data.markets.totalVolume)}`;
+        } else {
+          marketsEl.textContent = '-';
+          document.getElementById('defi-markets-sub').textContent = 'unavailable';
+        }
+
+        // Insurance
+        const insuranceEl = document.getElementById('defi-insurance');
+        if (data.insurance) {
+          insuranceEl.textContent = formatRawToken(data.insurance.totalCollateral);
+          document.getElementById('defi-insurance-sub').textContent =
+            `collateral | ${data.insurance.activePolicies} active policies`;
+        } else {
+          insuranceEl.textContent = '-';
+          document.getElementById('defi-insurance-sub').textContent = 'unavailable';
+        }
+
+        // Vouches
+        const vouchesEl = document.getElementById('defi-vouches');
+        if (data.vouches) {
+          vouchesEl.textContent = data.vouches.totalVouches;
+          document.getElementById('defi-vouches-sub').textContent =
+            `total | ${data.vouches.activeVouches} active`;
+        } else {
+          vouchesEl.textContent = '-';
+          document.getElementById('defi-vouches-sub').textContent = 'unavailable';
+        }
+
+        // TVL Ring Chart
+        const stakingTVL = parseFloat(data.staking?.totalStaked || '0');
+        const marketTVL = parseFloat(data.markets?.totalVolume || '0');
+        const insuranceTVL = parseFloat(data.insurance?.totalCollateral || '0');
+
+        document.getElementById('tvl-chart').innerHTML = buildTvlRing(stakingTVL, marketTVL, insuranceTVL);
+
+        // Staking details
+        const stakingHtml = data.staking ? `
+          <div class="defi-metric-row">
+            <span class="defi-metric-label">Total Value Locked</span>
+            <span class="defi-metric-value" style="color:var(--success);">${formatRawToken(data.staking.totalStaked)} $TRUST</span>
+          </div>
+          <div class="defi-metric-row">
+            <span class="defi-metric-label">Cooldown Period</span>
+            <span class="defi-metric-value">${Math.round((data.staking.cooldownPeriod || 0) / 86400)} days</span>
+          </div>
+          <div class="defi-metric-row">
+            <span class="defi-metric-label">Slash Rate</span>
+            <span class="defi-metric-value" style="color:var(--danger);">${((data.staking.slashBasisPoints || 0) / 100).toFixed(1)}%</span>
+          </div>
+          <div class="defi-metric-row">
+            <span class="defi-metric-label">Liquid Receipt</span>
+            <span class="defi-metric-value">stTRUST (ERC-20)</span>
+          </div>
+        ` : '<div style="text-align:center;color:var(--text-dim);padding:16px;">Staking data unavailable</div>';
+
+        document.getElementById('staking-details').innerHTML = stakingHtml;
+
+        // Markets & Insurance details
+        let miHtml = '';
+        if (data.markets) {
+          miHtml += `
+            <div class="defi-metric-row">
+              <span class="defi-metric-label">Markets Created</span>
+              <span class="defi-metric-value" style="color:var(--purple);">${data.markets.nextMarketId}</span>
+            </div>
+            <div class="defi-metric-row">
+              <span class="defi-metric-label">Trading Volume</span>
+              <span class="defi-metric-value">${formatRawToken(data.markets.totalVolume)} $TRUST</span>
+            </div>
+          `;
+        }
+        if (data.insurance) {
+          miHtml += `
+            <div class="defi-metric-row">
+              <span class="defi-metric-label">Insurance Collateral</span>
+              <span class="defi-metric-value" style="color:#06b6d4;">${formatRawToken(data.insurance.totalCollateral)} $TRUST</span>
+            </div>
+            <div class="defi-metric-row">
+              <span class="defi-metric-label">Premiums Collected</span>
+              <span class="defi-metric-value">${formatRawToken(data.insurance.totalPremiums)} $TRUST</span>
+            </div>
+            <div class="defi-metric-row">
+              <span class="defi-metric-label">Active Policies</span>
+              <span class="defi-metric-value">${data.insurance.activePolicies}</span>
+            </div>
+          `;
+        }
+        if (!miHtml) miHtml = '<div style="text-align:center;color:var(--text-dim);padding:16px;">Data unavailable</div>';
+
+        document.getElementById('market-insurance-details').innerHTML = miHtml;
+
+        // Contract addresses
+        if (data.contracts) {
+          const contracts = data.contracts;
+          const basescanUrl = 'https://basescan.org/address/';
+          document.getElementById('contract-grid').innerHTML = Object.entries(contracts).map(([name, addr]) => `
+            <div class="contract-item">
+              <span class="contract-name">${name.replace(/([A-Z])/g, ' $1').trim()}</span>
+              <a href="${basescanUrl}${addr}" target="_blank" rel="noopener" class="contract-addr" title="${addr}">${truncateAddr(addr)}</a>
+            </div>
+          `).join('');
+        }
+
+      } catch (e) {
+        console.error('Failed to load DeFi stats:', e);
+        document.getElementById('defi-stats-grid').innerHTML =
+          `<div style="grid-column:1/-1;text-align:center;color:var(--danger);padding:20px;">Failed to load DeFi data</div>`;
+      }
+    }
+
     // --- Initialize & Auto-Refresh ---
 
     async function loadAll() {
       await Promise.all([
         loadOverview(),
+        loadDefi(),
         loadAgents(),
         loadActions(),
         loadTimeline(),

@@ -69,6 +69,7 @@ contract StakingVault is
     error NoPendingUnstake(bytes32 agentId);
     error InsurancePoolNotSet();
     error ZeroAmount();
+    error BpsTooHigh(uint256 bps);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -225,18 +226,22 @@ contract StakingVault is
     // ─── Admin ───
 
     function setCooldownPeriod(uint256 _period) external onlyOwner {
-        emit CooldownPeriodUpdated(cooldownPeriod, _period);
+        uint256 oldPeriod = cooldownPeriod;
         cooldownPeriod = _period;
+        emit CooldownPeriodUpdated(oldPeriod, _period);
     }
 
     function setSlashBasisPoints(uint256 _bps) external onlyOwner {
-        emit SlashBasisPointsUpdated(slashBasisPoints, _bps);
+        if (_bps > 10000) revert BpsTooHigh(_bps);
+        uint256 oldBps = slashBasisPoints;
         slashBasisPoints = _bps;
+        emit SlashBasisPointsUpdated(oldBps, _bps);
     }
 
     function setInsurancePool(address _pool) external onlyOwner {
-        emit InsurancePoolUpdated(insurancePool, _pool);
+        address oldPool = insurancePool;
         insurancePool = _pool;
+        emit InsurancePoolUpdated(oldPool, _pool);
     }
 
     // ─── UUPS ───
