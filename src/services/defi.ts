@@ -473,6 +473,18 @@ export async function getVouchNftInfo(tokenId: number): Promise<any | null> {
   }
 }
 
+export async function getVouchScore(agentUuid: string): Promise<number | null> {
+  if (!vouchMarket) return null;
+  try {
+    const agentId = uuidToBytes32(agentUuid);
+    const score = await vouchMarket.getVouchScore(agentId);
+    return Number(score); // 0-20, already capped by contract
+  } catch (err: any) {
+    console.error('[DeFi] getVouchScore error:', err.message);
+    return null;
+  }
+}
+
 export async function getVouchMarketStats(): Promise<{ totalVouches: number; totalActive: number } | null> {
   if (!vouchMarket) return null;
   try {

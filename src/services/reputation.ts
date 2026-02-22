@@ -1,6 +1,7 @@
 import prisma from '../db/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { updateReputationOnChain, logReputationEventOnChain } from './blockchain';
+import { isDefiEnabled, getStakeInfo, getVouchScore } from './defi';
 
 interface ReputationFactors {
   baseScore: number;
@@ -32,16 +33,48 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
   // Identity verification bonus
   const identityBonus = agent.identityVerified ? 10 : 0;
 
-  // Stake bonus (5-15 based on amount)
-  const stakeAmount = Number(agent.stakeAmount);
+  // Stake bonus — read from on-chain StakingVault if DeFi is enabled, else fall back to Postgres
   let stakeBonus = 0;
-  if (stakeAmount > 0) {
-    stakeBonus = Math.min(15, 5 + Math.floor(stakeAmount / 100));
+  if (isDefiEnabled()) {
+    try {
+      const onChainStake = await getStakeInfo(agentId);
+      if (onChainStake && onChainStake.stakeScore > 0) {
+        // stakeScore is 0-15, already calculated by the StakingVault contract
+        stakeBonus = onChainStake.stakeScore;
+      }
+    } catch {
+      // Fallback to Postgres if on-chain read fails
+      const stakeAmount = Number(agent.stakeAmount);
+      if (stakeAmount > 0) {
+        stakeBonus = Math.min(15, 5 + Math.floor(stakeAmount / 100));
+      }
+    }
+  } else {
+    const stakeAmount = Number(agent.stakeAmount);
+    if (stakeAmount > 0) {
+      stakeBonus = Math.min(15, 5 + Math.floor(stakeAmount / 100));
+    }
   }
 
-  // Vouch bonus (+2 per vouch, max +20)
+  // Vouch bonus — read from on-chain VouchMarket if DeFi is enabled, else fall back to Postgres
+  let vouchBonus = 0;
   const vouchCount = agent.vouchesReceived.length;
-  const vouchBonus = Math.min(20, vouchCount * 2);
+  if (isDefiEnabled()) {
+    try {
+      const onChainVouchScore = await getVouchScore(agentId);
+      if (onChainVouchScore !== null && onChainVouchScore > 0) {
+        // VouchMarket.getVouchScore() returns 0-20, weighted by voucher reputation
+        vouchBonus = onChainVouchScore;
+      } else {
+        // No on-chain vouches yet — use Postgres count
+        vouchBonus = Math.min(20, vouchCount * 2);
+      }
+    } catch {
+      vouchBonus = Math.min(20, vouchCount * 2);
+    }
+  } else {
+    vouchBonus = Math.min(20, vouchCount * 2);
+  }
 
   // Success rate bonus (up to +20)
   let successRateBonus = 0;

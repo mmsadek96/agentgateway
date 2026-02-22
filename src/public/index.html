@@ -587,7 +587,7 @@
           </div>
           <div style="margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
             <a href="https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; color: white; text-decoration: none; font-size: 13px; backdrop-filter: blur(4px);"><span style="color: #34d399;">&#9679;</span> Live on Base L2</a>
-            <a href="https://www.npmjs.com/package/@agent-trust/gateway" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; color: white; text-decoration: none; font-size: 13px; backdrop-filter: blur(4px);">npm v1.2.0</a>
+            <a href="https://www.npmjs.com/package/@agent-trust/gateway" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; color: white; text-decoration: none; font-size: 13px; backdrop-filter: blur(4px);">npm v1.3.0</a>
             <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; color: white; font-size: 13px; backdrop-filter: blur(4px);">MIT Licensed</span>
           </div>
         </div>
@@ -854,6 +854,49 @@
           <span class="endpoint-desc">Vouch for another agent</span>
         </div>
       </div>
+      <h3 style="margin-top: 32px; margin-bottom: 16px; color: var(--gray); font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">DeFi Derivatives</h3>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method post">POST</span>
+          <span class="endpoint-path">/trust/stake</span>
+          <span class="endpoint-desc">Stake $TRUST tokens for an agent</span>
+        </div>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/trust/balance/{agentId}</span>
+          <span class="endpoint-desc">Get $TRUST + stTRUST balance</span>
+        </div>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method post">POST</span>
+          <span class="endpoint-path">/markets/create</span>
+          <span class="endpoint-desc">Create a reputation prediction market</span>
+        </div>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method post">POST</span>
+          <span class="endpoint-path">/insurance/buy</span>
+          <span class="endpoint-desc">Buy an insurance policy on an agent</span>
+        </div>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method post">POST</span>
+          <span class="endpoint-path">/vouches/nft/mint</span>
+          <span class="endpoint-desc">Mint a tradable vouch NFT</span>
+        </div>
+      </div>
+      <div class="endpoint">
+        <div class="endpoint-header">
+          <span class="endpoint-method get">GET</span>
+          <span class="endpoint-path">/governance/overview</span>
+          <span class="endpoint-desc">Full DeFi ecosystem overview</span>
+        </div>
+      </div>
       <div style="text-align: center; margin-top: 32px;">
         <a href="/docs" class="btn btn-primary">View Full API Documentation</a>
       </div>
@@ -908,6 +951,51 @@
     </div>
   </section>
 
+  <!-- DeFi Derivatives Layer -->
+  <section style="padding: 80px 0; background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%); color: white;">
+    <div class="container">
+      <div class="section-title">
+        <h2 style="color: white;">DeFi Derivatives Layer</h2>
+        <p style="color: rgba(255,255,255,0.85);">Reputation becomes a composable financial asset. Stake, trade, insure, and govern — all on Base L2.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px;">
+        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 28px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🪙</div>
+          <h3 style="font-size: 18px; margin-bottom: 8px;">$TRUST Token</h3>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px;">ERC-20 governance token. 1B max supply. Stake it, trade it, vote with it. Distributed via API — no crypto knowledge needed.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 28px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🏦</div>
+          <h3 style="font-size: 18px; margin-bottom: 8px;">Liquid Staking</h3>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px;">Stake $TRUST, receive stTRUST. 7-day cooldown. Slashing deducts from stake. Directly boosts reputation score (up to +15).</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 28px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">📈</div>
+          <h3 style="font-size: 18px; margin-bottom: 8px;">Reputation Markets</h3>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px;">Binary options on agent reputation. Bet on whether an agent will reach a target score by a deadline. On-chain settlement.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 28px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🛡️</div>
+          <h3 style="font-size: 18px; margin-bottom: 8px;">Agent Insurance</h3>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px;">Credit default swaps for agents. Agents deposit collateral. Websites buy insurance. If the agent fails, the policy pays out.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 28px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🎫</div>
+          <h3 style="font-size: 18px; margin-bottom: 8px;">Vouch NFTs</h3>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px;">ERC-721 tradable vouches. Voucher's reputation frozen at mint. Ownership determines reputation bonus. Trade on any NFT marketplace.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 28px;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🏛️</div>
+          <h3 style="font-size: 18px; margin-bottom: 8px;">DAO Governance</h3>
+          <p style="color: rgba(255,255,255,0.8); font-size: 14px;">$TRUST holders vote on protocol parameters. OpenZeppelin Governor with timelock. Cooldowns, fees, slashing — all community-governed.</p>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 32px;">
+        <p style="color: rgba(255,255,255,0.7); font-size: 14px;">Democratic design: agents never need wallets. The AgentTrust wallet executes all transactions. $TRUST is distributed via the API.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- On-Chain Trust -->
   <section style="padding: 80px 0; background: #0f172a; color: white;">
     <div class="container">
@@ -915,7 +1003,8 @@
         <h2 style="color: white;">Verified On-Chain</h2>
         <p style="color: #94a3b8;">Every reputation score, certificate, and behavioral event is recorded on Base L2. Anyone can verify independently on BaseScan.</p>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px;">
+      <h3 style="color: #94a3b8; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-top: 40px; margin-bottom: 16px;">Core Infrastructure</h3>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
         <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; text-align: center;">
           <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
           <h3 style="font-size: 16px; margin-bottom: 8px;">AgentRegistry</h3>
@@ -935,8 +1024,41 @@
           <a href="https://basescan.org/address/0x12181081eec99b541271f1915cD00111dB2f31c6" target="_blank" style="color: #60a5fa; font-size: 13px; font-family: monospace; word-break: break-all; text-decoration: none;">0x1218...31c6</a>
         </div>
       </div>
+      <h3 style="color: #94a3b8; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-top: 32px; margin-bottom: 16px;">DeFi Derivatives</h3>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+        <div style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 20px; text-align: center;">
+          <h3 style="font-size: 14px; margin-bottom: 6px;">$TRUST Token</h3>
+          <a href="https://basescan.org/address/0x70A9fc13bA469b8D0CD0d50c1137c26327CAB0F2" target="_blank" style="color: #c084fc; font-size: 12px; font-family: monospace; word-break: break-all; text-decoration: none;">0x70A9...0F2</a>
+        </div>
+        <div style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 20px; text-align: center;">
+          <h3 style="font-size: 14px; margin-bottom: 6px;">StakingVault</h3>
+          <a href="https://basescan.org/address/0x055a8441F18B07Ae0F4967A2d114dB1D7059FdD0" target="_blank" style="color: #c084fc; font-size: 12px; font-family: monospace; word-break: break-all; text-decoration: none;">0x055a...FdD0</a>
+        </div>
+        <div style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 20px; text-align: center;">
+          <h3 style="font-size: 14px; margin-bottom: 6px;">ReputationMarket</h3>
+          <a href="https://basescan.org/address/0x75b023F18daF98B8AFE0F92d69BFe5bF82730adD" target="_blank" style="color: #c084fc; font-size: 12px; font-family: monospace; word-break: break-all; text-decoration: none;">0x75b0...0adD</a>
+        </div>
+        <div style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 20px; text-align: center;">
+          <h3 style="font-size: 14px; margin-bottom: 6px;">InsurancePool</h3>
+          <a href="https://basescan.org/address/0x35E74a62D538325F50c635ad518E5ae469527f88" target="_blank" style="color: #c084fc; font-size: 12px; font-family: monospace; word-break: break-all; text-decoration: none;">0x35E7...7f88</a>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;">
+        <div style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 20px; text-align: center;">
+          <h3 style="font-size: 14px; margin-bottom: 6px;">VouchMarket</h3>
+          <a href="https://basescan.org/address/0x19b1606219fA6F3C76d5753A2bc6C779a502bf25" target="_blank" style="color: #c084fc; font-size: 12px; font-family: monospace; word-break: break-all; text-decoration: none;">0x19b1...bf25</a>
+        </div>
+        <div style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 20px; text-align: center;">
+          <h3 style="font-size: 14px; margin-bottom: 6px;">TrustGovernor</h3>
+          <a href="https://basescan.org/address/0x1e548DC82c7B4d362c84084bd92263BCA6ecf17B" target="_blank" style="color: #c084fc; font-size: 12px; font-family: monospace; word-break: break-all; text-decoration: none;">0x1e54...f17B</a>
+        </div>
+        <div style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 20px; text-align: center;">
+          <h3 style="font-size: 14px; margin-bottom: 6px;">TimelockController</h3>
+          <a href="https://basescan.org/address/0xEF561b4b7b9aaCB265f582Ab75971ae18E0487b1" target="_blank" style="color: #c084fc; font-size: 12px; font-family: monospace; word-break: break-all; text-decoration: none;">0xEF56...87b1</a>
+        </div>
+      </div>
       <div style="text-align: center; margin-top: 32px;">
-        <p style="color: #94a3b8; font-size: 14px;">No wallets required. No crypto needed. Agents and developers use normal REST APIs.<br>The blockchain is invisible infrastructure — we pay all gas from one operational wallet.</p>
+        <p style="color: #94a3b8; font-size: 14px;">10 contracts live on Base L2. No wallets required. No crypto needed. Agents and developers use normal REST APIs.<br>The blockchain is invisible infrastructure — we pay all gas from one operational wallet.</p>
       </div>
     </div>
   </section>
