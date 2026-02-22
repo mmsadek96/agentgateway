@@ -14,8 +14,10 @@ First off, thank you for considering contributing! AgentTrust is building the tr
 - **Fix bugs** — Check issues labeled `bug`
 - **Build features** — Check issues labeled `good first issue` or `help wanted`
 - **Write SDKs** — We need SDKs for Python, Go, Rust, and more
-- **Add tests** — Increase coverage
+- **Add tests** — Increase coverage (API tests, gateway tests, contract tests)
 - **Improve the gateway** — New middleware features, better error handling
+- **Smart contracts** — Write Hardhat tests, improve gas efficiency, build on-chain verifier tools
+- **Blockchain tooling** — BaseScan verification scripts, batch sync improvements, gas monitoring
 
 ## Getting Started
 
@@ -121,6 +123,11 @@ Here are some high-impact areas where we need help:
 | Web dashboard UI | Hard | Very High |
 | Go SDK | Medium | Medium |
 | CI/CD pipeline | Easy | Medium |
+| Smart contract tests (Hardhat) | Medium | High |
+| BaseScan contract verification | Easy | Medium |
+| On-chain verifier SDK | Hard | Very High |
+| Batch sync service (cron) | Medium | High |
+| Multisig migration for contracts | Hard | High |
 
 ## Questions?
 

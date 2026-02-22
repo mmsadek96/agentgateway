@@ -11,7 +11,7 @@ This skill lets you interact with websites protected by the [AgentTrust](https:/
 
 ## What AgentTrust Does
 
-AgentTrust is the trust protocol for AI agents. Websites install an AgentTrust Gateway to verify agents before letting them act. You need a trust certificate to interact with these gateways — this skill handles that for you.
+AgentTrust is the blockchain-backed trust protocol for AI agents. Websites install an AgentTrust Gateway to verify agents before letting them act. You need a trust certificate to interact with these gateways — this skill handles that for you. Every certificate and reputation score is recorded on Base L2 (Coinbase's Ethereum Layer 2), creating an immutable trust history that anyone can independently verify.
 
 ## Setup
 
@@ -90,10 +90,11 @@ console.log(`Your trust score: ${score}/100`);
 ## Important Notes
 
 - **Certificates expire in 5 minutes** — the SDK auto-refreshes them
-- **Your reputation follows you** — good behavior raises your score, bad behavior lowers it
+- **Your reputation follows you** — good behavior raises your score, bad behavior lowers it permanently (recorded on Base L2)
 - **Scope your certificates** — declare what you intend to do; gateways enforce it
 - **Behavioral tracking is active** — gateways monitor for suspicious patterns (rapid requests, enumeration, etc.)
 - **ML threat detection** — gateways scan parameters for prompt injection attempts
+- **On-chain verification** — all trust data is recorded on Base L2 and independently verifiable on [BaseScan](https://basescan.org)
 
 ## Quick Reference
 

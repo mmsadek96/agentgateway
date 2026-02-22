@@ -10,6 +10,7 @@
 [![npm gateway](https://img.shields.io/npm/v/@agent-trust/gateway?label=gateway&color=cb3837)](https://www.npmjs.com/package/@agent-trust/gateway)
 [![npm sdk](https://img.shields.io/npm/v/@agent-trust/sdk?label=sdk&color=cb3837)](https://www.npmjs.com/package/@agent-trust/sdk)
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://agentgateway-6f041c655eb3.herokuapp.com/)
+[![Base L2](https://img.shields.io/badge/Base_L2-on--chain-0052FF.svg)](https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
 
@@ -27,18 +28,19 @@ CAPTCHAs were designed to block bots. But what happens when the "bot" is a legit
 
 ## The Solution
 
-AgentTrust is an open-source trust verification system that works like a **police station for AI agents**:
+AgentTrust is an open-source, **blockchain-backed** trust verification system that works like a **police station for AI agents**:
 
-- **Agents get a "criminal record"** — a reputation score (0-100) based on their history
+- **Agents get a "criminal record"** — a reputation score (0-100) recorded on Base L2
 - **Good behavior is rewarded** — successful actions raise the score
-- **Bad behavior is expensive** — agents can stake collateral that gets slashed for abuse
+- **Bad behavior is permanent** — every reputation change is written to an immutable on-chain ledger
 - **Trust is transferable** — established agents can vouch for new ones
-- **Certificates are cryptographic** — RS256-signed JWTs that can't be forged
+- **Certificates are on-chain** — issued on Base L2, verifiable by anyone without trusting AgentTrust
+- **Democratic access** — agents never need wallets or crypto. The blockchain is invisible infrastructure
 
 ```
-Agent → Station: "Give me my clearance"     → Signed JWT certificate
+Agent → Station: "Give me my clearance"     → Certificate issued (recorded on Base L2)
 Agent → Gateway: "Here's my cert, do this"  → Gateway verifies, executes action
-Gateway → Station: "Here's what happened"    → Permanent record updated
+Gateway → Station: "Here's what happened"    → Permanent on-chain record
 ```
 
 ## Architecture
@@ -185,6 +187,7 @@ Every agent starts at 50 and builds trust over time:
 1. Agent requests certificate from Station
    POST /certificates/request
    → Station checks reputation, signs JWT with RS256
+   → Certificate is recorded on Base L2 (CertificateRegistry contract)
 
 2. Agent presents certificate to Gateway
    POST /agent-gateway/actions/search_products
@@ -195,15 +198,30 @@ Every agent starts at 50 and builds trust over time:
 3. Gateway reports outcome to Station
    POST /reports
    → Station updates agent's permanent record
+   → Reputation change synced to Base L2 (AgentRegistry + ReputationLedger)
 ```
 
-**Key insight:** Gateways verify certificates *locally* using the Station's public key. No network roundtrip needed for verification = fast.
+**Key insight:** Gateways verify certificates *locally* using the Station's public key. No network roundtrip needed for verification = fast. On-chain writes happen in the background and never block API responses.
+
+### On-Chain Trust (Base L2)
+
+Every reputation score, certificate, and behavioral event is recorded on **Base** (Coinbase's Ethereum L2):
+
+| Contract | Address | What it stores |
+|----------|---------|---------------|
+| **AgentRegistry** | [`0xb880...69e8`](https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8) | Agent records, reputation scores, status |
+| **CertificateRegistry** | [`0xD3cA...c11`](https://basescan.org/address/0xD3cAf18d292168075653322780EF961BF6394c11) | Certificates, scope hashes, revocation |
+| **ReputationLedger** | [`0x1218...c6`](https://basescan.org/address/0x12181081eec99b541271f1915cD00111dB2f31c6) | Immutable audit trail of every change |
+
+**Why blockchain?** Trust requires independent verification. Anyone can read these contracts directly on BaseScan without trusting AgentTrust. If we disappear, the reputation data lives on.
+
+**Why Base?** Near-zero gas costs (~$0.001 per write), EVM-compatible, backed by Coinbase.
+
+**Democratic design:** Only AgentTrust's operational wallet writes to the chain. Agents and developers never need wallets, never touch crypto. The blockchain is invisible infrastructure.
 
 ### Trust Mechanisms
 
-**Reputation** — Track record over time. 100 successful orders? High trust. 3 chargebacks? Low trust.
-
-**Staking** — Agents deposit collateral. Want to do high-value actions? Stake more. Abuse = stake gets slashed. Makes attacks economically irrational.
+**Reputation** — Track record over time, stored on-chain. 100 successful orders? High trust. 3 chargebacks? Low trust. Permanently recorded on Base L2.
 
 **Vouching** — Established agents (score 60+) vouch for newcomers. Creates accountability chains. If someone you vouched for misbehaves, it reflects on you.
 

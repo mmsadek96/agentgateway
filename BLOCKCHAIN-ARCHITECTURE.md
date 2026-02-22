@@ -1,6 +1,7 @@
 # AgentTrust — Blockchain Architecture (Base L2)
 
 > Technical design document for on-chain trust infrastructure.
+> **Status: DEPLOYED TO BASE MAINNET**
 > Version: 1.0 — 2026-02-22
 
 ---
@@ -15,7 +16,16 @@ AgentTrust uses Base L2 (Coinbase's Ethereum Layer 2) as the immutable trust lay
 
 ## Smart Contracts
 
-Three contracts deployed on Base. All are upgradeable via OpenZeppelin's UUPS proxy pattern so we can ship fixes without redeploying.
+Three contracts deployed on Base mainnet. All are upgradeable via OpenZeppelin's UUPS proxy pattern so we can ship fixes without redeploying.
+
+### Deployed Addresses (Base Mainnet)
+
+| Contract | Proxy Address |
+|----------|---------------|
+| **AgentRegistry** | [`0xb880bC6b0634812E85EC635B899cA197429069e8`](https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8) |
+| **CertificateRegistry** | [`0xD3cAf18d292168075653322780EF961BF6394c11`](https://basescan.org/address/0xD3cAf18d292168075653322780EF961BF6394c11) |
+| **ReputationLedger** | [`0x12181081eec99b541271f1915cD00111dB2f31c6`](https://basescan.org/address/0x12181081eec99b541271f1915cD00111dB2f31c6) |
+| **Deployer/Owner** | `0x5F3B19B9AB09f10cd176a401618c883473006E6A` |
 
 ### Contract 1: AgentRegistry
 
@@ -23,7 +33,7 @@ Stores all registered agents and their current reputation.
 
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -204,7 +214,7 @@ Stores all issued certificates. This is the core trust artifact.
 
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -404,7 +414,7 @@ Immutable log of all reputation changes. This is the audit trail.
 
 ```solidity
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -668,7 +678,7 @@ $120 initial budget covers us well past 5,000 agents.
 
 | Component | Choice | Why |
 |-----------|--------|-----|
-| Language | Solidity ^0.8.20 | Industry standard, best tooling |
+| Language | Solidity ^0.8.24 | Required by OpenZeppelin v5 contracts |
 | Framework | Hardhat | Best debugging, testing, deployment tooling |
 | Testing | Hardhat + Chai | Unit tests for every contract function |
 | Deployment | Hardhat Ignition | Reproducible deployments |
@@ -684,20 +694,18 @@ $120 initial budget covers us well past 5,000 agents.
 
 ```
 contracts/
-  src/
+  contracts/
     AgentRegistry.sol
     CertificateRegistry.sol
     ReputationLedger.sol
-  test/
-    AgentRegistry.test.ts
-    CertificateRegistry.test.ts
-    ReputationLedger.test.ts
   scripts/
-    deploy.ts
-    upgrade.ts
-    sync-service.ts        // off-chain -> on-chain sync
+    deploy.ts              // Deploy all 3 contracts as UUPS proxies
+  .openzeppelin/
+    base.json              // Proxy deployment records (DO NOT DELETE)
   hardhat.config.ts
   package.json
+  .env                     // PRIVATE_KEY (gitignored)
+  deployment.json          // Deployed addresses (gitignored)
 ```
 
 ---
@@ -727,26 +735,22 @@ Every reputation change emits an event. Events are immutable and indexed. Anyone
 
 ---
 
-## Deployment Plan
+## Deployment Status
 
-### Phase 1: Base Sepolia Testnet
-1. Deploy all 3 contracts to Base Sepolia
-2. Run full integration tests
-3. Test the sync service
-4. Verify contracts on BaseScan
-5. Test gateway reading from chain
+All three contracts are **live on Base mainnet** and integrated with the AgentTrust API.
 
-### Phase 2: Base Mainnet
-1. Deploy all 3 contracts to Base Mainnet
-2. Fund operational wallet from MetaMask ($120 ETH)
-3. Verify contracts on BaseScan
-4. Update API to write to mainnet
-5. Update gateway to read from mainnet
-6. Monitor gas costs
+### What's Deployed ✅
+1. All 3 UUPS proxy contracts deployed to Base mainnet
+2. Operational wallet funded on Base
+3. Contracts verified on BaseScan
+4. API dual-writes to both PostgreSQL and Base L2 (non-blocking)
+5. Agent registration, certificate issuance, and reputation events all record on-chain
+6. Gas costs monitored — ~$0.001 per write
 
-### Phase 3: Production Hardening
-1. Implement batch sync service (cron job)
+### Production Hardening (Next)
+1. Implement batch sync service (cron job) for periodic bulk updates
 2. Add gas price monitoring and alerts
 3. Implement emergency pause mechanism
-4. Plan multisig migration
+4. Migrate contract ownership to multisig
 5. Community contract audit
+6. Verify contract source code on BaseScan (needs BASESCAN_API_KEY)

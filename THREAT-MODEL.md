@@ -11,9 +11,10 @@
 AgentTrust is a trust verification system for AI agents. This document describes the threat model: what attacks we defend against, what we don't (yet), and how the system responds.
 
 **Architecture summary:**
-- **Station** — central authority that issues signed JWT certificates and maintains reputation records
+- **Station** — central authority that issues signed JWT certificates and maintains reputation records, with dual-write to Base L2
 - **Gateway** — Express middleware installed on websites, verifies certificates and enforces trust policies
 - **Agent SDK** — client library agents use to request certificates and execute gateway actions
+- **Base L2 Contracts** — on-chain immutable ledger for agent reputation, certificates, and audit trail (3 UUPS-upgradeable contracts on Base mainnet)
 
 ---
 
@@ -23,14 +24,17 @@ AgentTrust is a trust verification system for AI agents. This document describes
                     Trust Boundary 1                Trust Boundary 2
                           |                               |
    Agent (untrusted) -----|--- Station (trusted) ---------|--- Gateway (semi-trusted)
-                          |                               |
+                          |          |                     |
+                          |    Base L2 (trustless)         |
+                          |    (independently verifiable)  |
 ```
 
 | Boundary | Description |
 |----------|-------------|
-| **Agent <-> Station** | Agents authenticate with developer API keys. Station issues signed JWTs. The agent is untrusted — any claims it makes must be verified cryptographically. |
-| **Station <-> Gateway** | Gateways fetch the Station's public key and verify JWTs locally. Gateways submit behavior reports using developer API keys. Gateway is semi-trusted — it runs on the website owner's server. |
-| **Agent <-> Gateway** | The agent presents a JWT to the gateway. The gateway verifies the JWT signature and checks reputation score, scope, and behavioral patterns before allowing action execution. |
+| **Agent ↔ Station** | Agents authenticate with developer API keys. Station issues signed JWTs. The agent is untrusted — any claims it makes must be verified cryptographically. |
+| **Station ↔ Gateway** | Gateways fetch the Station's public key and verify JWTs locally. Gateways submit behavior reports using developer API keys. Gateway is semi-trusted — it runs on the website owner's server. |
+| **Agent ↔ Gateway** | The agent presents a JWT to the gateway. The gateway verifies the JWT signature and checks reputation score, scope, and behavioral patterns before allowing action execution. |
+| **Station ↔ Base L2** | Station dual-writes all reputation, certificates, and audit events to Base mainnet contracts. On-chain data is independently verifiable by anyone via BaseScan — no trust in AgentTrust required. |
 
 ---
 
@@ -46,7 +50,11 @@ AgentTrust is a trust verification system for AI agents. This document describes
 - JWTs include standard claims: `iss`, `sub`, `exp`, `jti`
 - The private key never leaves the Station server
 
-**Residual risk:** If the Station's private key is compromised, all certificates become forgeable. Mitigation: key rotation (planned for v2).
+**Additional on-chain mitigation:**
+- Every certificate is also recorded on Base L2 (CertificateRegistry contract) — even if a JWT is forged, it won't exist in the on-chain registry
+- Anyone can independently verify a certificate's existence and validity by reading the contract on BaseScan
+
+**Residual risk:** If the Station's private key is compromised, all certificates become forgeable (though on-chain records provide an independent verification path). Mitigation: key rotation (planned for v2).
 
 ### 3.2 Certificate Replay
 
@@ -75,6 +83,7 @@ AgentTrust is a trust verification system for AI agents. This document describes
 - Gateway reports require developer API key authentication
 - Score calculation uses weighted factors (action history, vouching, staking, identity verification)
 - Vouching system limits how much score one agent can boost another
+- All reputation changes are recorded on Base L2 (ReputationLedger contract) — creating an immutable audit trail that can be independently verified
 
 **Planned:**
 - Gateway reputation: gateways themselves earn trust over time; reports from new/untrusted gateways carry less weight
@@ -88,10 +97,10 @@ AgentTrust is a trust verification system for AI agents. This document describes
 **Mitigation (current):**
 - Reputation events are logged with timestamps and source IDs
 - Score decay is bounded — a single report can't destroy a well-established reputation
+- Every reputation change is recorded on-chain (ReputationLedger) with evidence hashes — creating an immutable, auditable trail that can be independently verified on BaseScan
 
 **Planned:**
 - Appeal mechanism: agents can dispute reputation events
-- Signed event receipts: every reputation change is cryptographically signed and auditable
 - Weighting algorithm that discounts reports from gateways with low trust
 - Privacy controls: agents choose what reputation data is public
 
@@ -212,7 +221,7 @@ The scoring algorithm is open source: see `src/services/reputation.ts`.
 
 | Threat | Status | Notes |
 |--------|--------|-------|
-| Station compromise | Planned v2 | Key rotation, HSM support, multi-party signing |
+| Station compromise | Partial | On-chain records survive station compromise. Key rotation, HSM support, multisig planned for v2 |
 | Insider threat (developer) | Partial | Developers can only affect their own agents |
 | Network-level MITM | Assumed HTTPS | All communication should use HTTPS |
 | Side-channel timing attacks | Not addressed | Low priority for current threat level |

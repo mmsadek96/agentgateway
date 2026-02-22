@@ -48,6 +48,7 @@ const results = await agent.executeBatch(
 - **Batch execution** — run multiple actions in sequence
 - **Auto-retry** — retries once with fresh certificate on 401
 - **Zero dependencies** — uses native `fetch` (Node 18+)
+- **On-chain recording** — every certificate and reputation change is recorded on Base L2, creating an immutable trust history verifiable on [BaseScan](https://basescan.org/address/0xD3cAf18d292168075653322780EF961BF6394c11)
 
 ## API
 

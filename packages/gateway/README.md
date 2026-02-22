@@ -61,8 +61,9 @@ app.listen(3000);
 - **Certificate verification** — validates RS256 JWT certificates from the AgentTrust Station
 - **Score-based access** — different actions require different reputation levels
 - **Real-time behavioral tracking** — detects and blocks suspicious agents mid-session
-- **Auto-reporting** — reports agent behavior back to Station automatically
+- **Auto-reporting** — reports agent behavior back to Station automatically (synced to Base L2 on-chain)
 - **Discovery endpoints** — agents can discover available actions programmatically
+- **On-chain trust** — every certificate and reputation score is recorded on Base L2, independently verifiable on [BaseScan](https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8)
 
 ## Behavioral Tracking
 
