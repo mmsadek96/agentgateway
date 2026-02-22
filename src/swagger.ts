@@ -11,11 +11,7 @@ const options: swaggerJsdoc.Options = {
     servers: [
       {
         url: 'https://agentgateway-6f041c655eb3.herokuapp.com',
-        description: 'Production server',
-      },
-      {
-        url: 'http://localhost:3000',
-        description: 'Development server',
+        description: 'AgentTrust Station',
       },
     ],
     components: {

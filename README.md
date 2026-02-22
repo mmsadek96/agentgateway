@@ -48,7 +48,7 @@ Gateway → Station: "Here's what happened"    → Permanent on-chain record
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
 │  AI Agent   │────▶│  Trust Station   │◀────│   Gateway   │
-│  (SDK)      │     │  (This Server)   │     │ (Middleware) │
+│  (SDK)      │     │  (Hosted API)    │     │ (Middleware) │
 └─────┬───────┘     └────────┬─────────┘     └──────┬──────┘
       │                      │                       │
       │         signed JWT   │  on-chain sync        │
@@ -65,7 +65,7 @@ Gateway → Station: "Here's what happened"    → Permanent on-chain record
 
 | Component | What it is | Who uses it |
 |-----------|-----------|-------------|
-| **Station** | Central trust registry & certificate authority | You (deploy once) |
+| **Station** | Central trust registry & certificate authority | Hosted by AgentTrust |
 | **[@agent-trust/gateway](packages/gateway)** | Express middleware for your website | Website owners |
 | **[@agent-trust/sdk](packages/agent-sdk)** | Client library for AI agents | Agent developers |
 | **Base L2 Contracts** | On-chain reputation, certificates & audit ledger | Automatic (transparent) |
@@ -316,38 +316,6 @@ Monitor your Station in real-time at `/dashboard`:
 
 **Full interactive docs:** [agentgateway-6f041c655eb3.herokuapp.com/docs](https://agentgateway-6f041c655eb3.herokuapp.com/docs)
 
-## Self-Hosting / Local Development
-
-Want to run your own Station or contribute to the project?
-
-```bash
-git clone https://github.com/mmsadek96/agentgateway.git
-cd agentgateway
-npm install
-
-# Generate RSA keys for JWT signing
-npm run generate-keys
-# Copy the output to your .env file
-
-# Set up your database
-echo 'DATABASE_URL="postgresql://user:pass@localhost:5432/agenttrust"' >> .env
-
-# Push schema & start
-npx prisma db push
-npm run dev
-```
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `STATION_PRIVATE_KEY` | Yes | RSA private key (PEM) for signing JWTs |
-| `STATION_PUBLIC_KEY` | Yes | RSA public key (PEM) for verification |
-| `PORT` | No | Server port (default: 3000) |
-| `CERTIFICATE_EXPIRY_SECONDS` | No | JWT lifetime (default: 300) |
-| `BASE_PRIVATE_KEY` | No | Base L2 wallet key for on-chain writes (optional) |
-
 ## Use Cases
 
 - **E-commerce** — Let AI shopping agents browse and buy, with trust gates for high-value orders
@@ -371,17 +339,9 @@ npm run dev
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions to the **gateway middleware**, **agent SDK**, **behavioral detection algorithms**, and **smart contracts**. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-```bash
-# Fork the repo, then:
-git clone https://github.com/YOUR_USERNAME/agentgateway.git
-cd agentgateway
-npm install
-npm run dev
-```
-
-Whether it's a bug fix, new feature, documentation improvement, or SDK in a new language — we'd love your help.
+Whether it's improving detection algorithms, building SDKs in new languages, writing contract tests, or documentation — we'd love your help.
 
 ## License
 

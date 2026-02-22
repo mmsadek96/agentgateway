@@ -21,9 +21,10 @@ First off, thank you for considering contributing! AgentTrust is building the tr
 
 ## Getting Started
 
+Contributions focus on the open-source components: **gateway middleware**, **agent SDK**, **behavioral detection algorithms**, and **smart contracts**. The Station (central API) is hosted by AgentTrust.
+
 ### Prerequisites
 - Node.js >= 18
-- PostgreSQL
 - npm
 
 ### Setup
@@ -36,41 +37,29 @@ cd agentgateway
 # Install dependencies
 npm install
 
-# Set up environment
-cp .env.example .env
-# Edit .env with your database URL
-
-# Generate RSA keys
-npm run generate-keys
-# Copy output to .env
-
-# Push database schema
-npx prisma db push
-
-# Start development server
-npm run dev
+# Work on the component you're contributing to:
+cd packages/gateway      # Gateway middleware
+cd packages/agent-sdk    # Agent SDK
+cd contracts             # Smart contracts (needs Hardhat)
 ```
 
 ### Project Structure
 
 ```
 agentgateway/
-├── src/                    # Station server
+├── packages/
+│   ├── gateway/            # @agent-trust/gateway (Express middleware) ← CONTRIBUTE HERE
+│   └── agent-sdk/          # @agent-trust/sdk (Agent client library)  ← CONTRIBUTE HERE
+├── contracts/              # Solidity smart contracts (Base L2)       ← CONTRIBUTE HERE
+│   ├── contracts/          # AgentRegistry, CertificateRegistry, ReputationLedger
+│   └── scripts/            # Deployment scripts
+├── src/                    # Station server (hosted by AgentTrust)
 │   ├── routes/             # API endpoints
 │   ├── services/           # Business logic (+ blockchain.ts)
 │   ├── middleware/          # Auth, rate limiting
-│   ├── utils/              # Helpers (keys, etc.)
-│   ├── types/              # TypeScript interfaces
 │   └── public/             # Landing page + dashboard
-├── contracts/              # Solidity smart contracts (Base L2)
-│   ├── contracts/          # AgentRegistry, CertificateRegistry, ReputationLedger
-│   └── scripts/            # Deployment scripts
-├── packages/
-│   ├── gateway/            # @agent-trust/gateway (Express middleware)
-│   └── agent-sdk/          # @agent-trust/sdk (Agent client library)
 ├── examples/               # Demo scripts
-├── prisma/                 # Database schema
-└── Dockerfile              # Production container
+└── prisma/                 # Database schema
 ```
 
 ## Development Workflow
@@ -117,7 +106,6 @@ Here are some high-impact areas where we need help:
 |------|-----------|--------|
 | Python SDK | Medium | High |
 | Test suite | Medium | High |
-| Docker Compose for local dev | Easy | Medium |
 | Webhook system | Medium | High |
 | Rate limiting by trust tier | Medium | High |
 | Web dashboard UI | Hard | Very High |
