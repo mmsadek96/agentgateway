@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agent Trust Service - Trust Verification for AI Agents</title>
+  <title>AgentTrust - The Trust Layer for the AI Agent Economy</title>
   <style>
     * {
       margin: 0;
@@ -550,6 +550,11 @@
         transform: none;
       }
     }
+
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 32px; }
+      .steps { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -574,11 +579,16 @@
     <div class="container">
       <div class="hero-content">
         <div>
-          <h1>Trust Verification for AI Agents</h1>
-          <p>Make malicious behavior expensive, risky, and traceable. One API call to verify if an AI agent should be trusted.</p>
+          <h1>The Trust Layer for the AI Agent Economy</h1>
+          <p>Reputation scores, behavioral tracking, and cryptographic certificates for AI agents — recorded on Base L2. Open source.</p>
           <div class="hero-buttons">
-            <a href="/docs" class="btn btn-primary">View API Docs</a>
-            <a href="#how-it-works" class="btn btn-secondary" style="background: transparent; border-color: white; color: white;">Learn More</a>
+            <a href="https://github.com/mmsadek96/agentgateway" class="btn btn-primary" target="_blank">View on GitHub</a>
+            <a href="/docs" class="btn btn-secondary" style="background: transparent; border-color: white; color: white;">API Docs</a>
+          </div>
+          <div style="margin-top: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <a href="https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; color: white; text-decoration: none; font-size: 13px; backdrop-filter: blur(4px);"><span style="color: #34d399;">&#9679;</span> Live on Base L2</a>
+            <a href="https://www.npmjs.com/package/@agent-trust/gateway" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; color: white; text-decoration: none; font-size: 13px; backdrop-filter: blur(4px);">npm v1.2.0</a>
+            <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; color: white; font-size: 13px; backdrop-filter: blur(4px);">MIT Licensed</span>
           </div>
         </div>
         <div class="hero-code">
@@ -606,7 +616,7 @@
     <div class="container">
       <div class="section-title">
         <h2>Why AgentTrust?</h2>
-        <p>Traditional CAPTCHAs filter bots from humans. AgentTrust filters malicious agents from legitimate ones using human trust principles.</p>
+        <p>CAPTCHAs solved the bot problem. AgentTrust solves the agent problem — with on-chain proof on Base L2.</p>
       </div>
       <div class="features-grid">
         <div class="feature-card">
@@ -626,18 +636,18 @@
         </div>
         <div class="feature-card">
           <div class="feature-icon">📊</div>
-          <h3>Behavior Tracking</h3>
-          <p>Every action is logged and analyzed. Patterns emerge, and suspicious behavior is flagged automatically.</p>
+          <h3>Real-Time Behavioral Detection</h3>
+          <p>6 detection algorithms catch abuse mid-session: rapid-fire requests, probing, scope violations, and more. Bad agents get blocked in real-time.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">⚡</div>
-          <h3>Simple Integration</h3>
-          <p>One API call. Get a trust score. Make your decision. No complex setup, no machine learning to train.</p>
+          <div class="feature-icon">⛓️</div>
+          <h3>On-Chain Trust (Base L2)</h3>
+          <p>Every reputation score, certificate, and behavioral event is recorded on Base (Coinbase's Ethereum L2). Verifiable by anyone on BaseScan — no need to trust us.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>Identity Verification</h3>
-          <p>Verified agents get bonus trust. Anonymous actors face restrictions. Accountability starts with identity.</p>
+          <div class="feature-icon">🤖</div>
+          <h3>ML Threat Detection</h3>
+          <p>Optional HuggingFace ONNX models detect prompt injection and malicious URLs locally. No API calls, no data leaves your server.</p>
         </div>
       </div>
     </div>
@@ -648,28 +658,28 @@
     <div class="container">
       <div class="section-title">
         <h2>How It Works</h2>
-        <p>Integrate in minutes, protect your platform from day one.</p>
+        <p>Agents get certificates. Websites verify them. Everything goes on-chain.</p>
       </div>
       <div class="steps">
         <div class="step">
           <div class="step-number">1</div>
           <h3>Register</h3>
-          <p>Create an account and get your API key. Free tier available.</p>
+          <p>Agent registers via API. Gets reputation score (0-100). Recorded on Base L2.</p>
         </div>
         <div class="step">
           <div class="step-number">2</div>
-          <h3>Add Agents</h3>
-          <p>Register agents that will interact with your platform.</p>
+          <h3>Get Certificate</h3>
+          <p>Agent requests a signed JWT certificate. Includes score, scope, and identity. Recorded on-chain.</p>
         </div>
         <div class="step">
           <div class="step-number">3</div>
-          <h3>Verify</h3>
-          <p>Call /verify before sensitive actions. Get instant trust decisions.</p>
+          <h3>Execute Action</h3>
+          <p>Website's gateway verifies the cert locally (no network call), checks score, monitors behavior in real-time.</p>
         </div>
         <div class="step">
           <div class="step-number">4</div>
-          <h3>Report</h3>
-          <p>Report outcomes to improve accuracy. The system learns from every interaction.</p>
+          <h3>Build Reputation</h3>
+          <p>Outcomes update the permanent record. Good behavior = higher trust everywhere. Bad behavior = on-chain slash event.</p>
         </div>
       </div>
     </div>
@@ -898,12 +908,48 @@
     </div>
   </section>
 
+  <!-- On-Chain Trust -->
+  <section style="padding: 80px 0; background: #0f172a; color: white;">
+    <div class="container">
+      <div class="section-title">
+        <h2 style="color: white;">Verified On-Chain</h2>
+        <p style="color: #94a3b8;">Every reputation score, certificate, and behavioral event is recorded on Base L2. Anyone can verify independently on BaseScan.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 40px;">
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+          <h3 style="font-size: 16px; margin-bottom: 8px;">AgentRegistry</h3>
+          <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Agent records, reputation scores, status</p>
+          <a href="https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8" target="_blank" style="color: #60a5fa; font-size: 13px; font-family: monospace; word-break: break-all; text-decoration: none;">0xb880...69e8</a>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 12px;">🔐</div>
+          <h3 style="font-size: 16px; margin-bottom: 8px;">CertificateRegistry</h3>
+          <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Certificates, scope hashes, revocation</p>
+          <a href="https://basescan.org/address/0xD3cAf18d292168075653322780EF961BF6394c11" target="_blank" style="color: #60a5fa; font-size: 13px; font-family: monospace; word-break: break-all; text-decoration: none;">0xD3cA...c11</a>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 24px; text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 12px;">📜</div>
+          <h3 style="font-size: 16px; margin-bottom: 8px;">ReputationLedger</h3>
+          <p style="color: #94a3b8; font-size: 13px; margin-bottom: 12px;">Immutable audit trail of every change</p>
+          <a href="https://basescan.org/address/0x12181081eec99b541271f1915cD00111dB2f31c6" target="_blank" style="color: #60a5fa; font-size: 13px; font-family: monospace; word-break: break-all; text-decoration: none;">0x1218...31c6</a>
+        </div>
+      </div>
+      <div style="text-align: center; margin-top: 32px;">
+        <p style="color: #94a3b8; font-size: 14px;">No wallets required. No crypto needed. Agents and developers use normal REST APIs.<br>The blockchain is invisible infrastructure — we pay all gas from one operational wallet.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- CTA -->
   <section class="cta">
     <div class="container">
-      <h2>Ready to Secure Your Platform?</h2>
-      <p>Join developers who trust AgentTrust to filter malicious AI agents. Start free, no credit card required.</p>
-      <a href="/docs" class="btn btn-primary" style="background: white; color: var(--primary);">Get Your API Key</a>
+      <h2>Build Trust for the Agent Economy</h2>
+      <p>Open source, MIT licensed, live on Base L2. Install the gateway, register your agents, start building trust.</p>
+      <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+        <a href="https://github.com/mmsadek96/agentgateway" class="btn btn-primary" style="background: white; color: var(--primary);" target="_blank">Star on GitHub</a>
+        <a href="/docs" class="btn btn-secondary" style="background: transparent; border-color: white; color: white;">View API Docs</a>
+      </div>
     </div>
   </section>
 
@@ -914,9 +960,10 @@
         <div>© 2026 AgentTrust. All rights reserved.</div>
         <div class="footer-links">
           <a href="/docs">API Docs</a>
+          <a href="/dashboard">Dashboard</a>
           <a href="https://github.com/mmsadek96/agentgateway" target="_blank">GitHub</a>
-          <a href="#">Privacy</a>
-          <a href="#">Terms</a>
+          <a href="https://www.npmjs.com/package/@agent-trust/gateway" target="_blank">NPM</a>
+          <a href="https://basescan.org/address/0xb880bC6b0634812E85EC635B899cA197429069e8" target="_blank">BaseScan</a>
         </div>
       </div>
     </div>
