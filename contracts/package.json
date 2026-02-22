@@ -1,0 +1,23 @@
+{
+  "name": "@agent-trust/contracts",
+  "version": "1.0.0",
+  "description": "AgentTrust smart contracts on Base L2 — on-chain certificates and reputation for AI agents",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:base": "hardhat run scripts/deploy.ts --network base",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.ts --network baseSepolia",
+    "verify": "hardhat run scripts/verify.ts --network base"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts-upgradeable": "^5.1.0",
+    "@openzeppelin/hardhat-upgrades": "^3.6.0",
+    "hardhat": "^2.22.0",
+    "dotenv": "^16.4.0",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.11.0"
+  }
+}

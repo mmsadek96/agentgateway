@@ -4,6 +4,7 @@ import prisma from '../db/prisma';
 import { loadPrivateKey, loadPublicKey } from '../utils/keys';
 import { calculateReputationScore } from './reputation';
 import { CertificatePayload, CertificateResult } from '../types';
+import { issueCertificateOnChain, revokeCertificateOnChain } from './blockchain';
 
 const CERTIFICATE_EXPIRY_SECONDS = parseInt(process.env.CERTIFICATE_EXPIRY_SECONDS || '300', 10);
 const ISSUER = 'agent-trust-station';
@@ -79,6 +80,9 @@ export async function issueCertificate(
     }
   });
 
+  // Issue certificate on-chain (non-blocking)
+  issueCertificateOnChain(jti, agent.id, score, scope, expiresAt).catch(() => {});
+
   return { token, expiresAt, score };
 }
 
@@ -122,6 +126,8 @@ export async function revokeCertificate(jti: string): Promise<boolean> {
       where: { jti },
       data: { revoked: true }
     });
+    // Revoke on-chain too (non-blocking)
+    revokeCertificateOnChain(jti).catch(() => {});
     return true;
   } catch {
     return false;

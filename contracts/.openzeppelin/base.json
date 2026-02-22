@@ -1,0 +1,627 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0xb880bC6b0634812E85EC635B899cA197429069e8",
+      "txHash": "0x18c9807e9397f30243a486f455a7083df6a255fdf9d80e4ed6bffc84d7c9378a",
+      "kind": "uups"
+    },
+    {
+      "address": "0xD3cAf18d292168075653322780EF961BF6394c11",
+      "txHash": "0xd8cbba0057bd5ec7d82910559855316f8398623aafd09cb5215941441112f835",
+      "kind": "uups"
+    },
+    {
+      "address": "0x12181081eec99b541271f1915cD00111dB2f31c6",
+      "txHash": "0x9ad893b4ce05290bd1a053d81f6a0412ee4f97cd31fb93e67ae3c175c97c090d",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "1f32684e60c27a5be0492f5a007a05cd11d22bc5ad62a84f45122da19f8f88ad": {
+      "address": "0xFe4641150abEA3544cb34bA7CA9CB267CCE1F9AD",
+      "txHash": "0xf78f4f2c943f532678682156071172db9a0ab87fabd5ee09493186c9ef28fcee",
+      "layout": {
+        "solcVersion": "0.8.24",
+        "storage": [
+          {
+            "label": "agents",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_mapping(t_bytes32,t_struct(Agent)1457_storage)",
+            "contract": "AgentRegistry",
+            "src": "contracts\\AgentRegistry.sol:26"
+          },
+          {
+            "label": "agentIds",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_bytes32)dyn_storage",
+            "contract": "AgentRegistry",
+            "src": "contracts\\AgentRegistry.sol:27"
+          },
+          {
+            "label": "totalAgents",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "AgentRegistry",
+            "src": "contracts\\AgentRegistry.sol:28"
+          },
+          {
+            "label": "activeAgents",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "AgentRegistry",
+            "src": "contracts\\AgentRegistry.sol:29"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)73_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]",
+            "numberOfBytes": "32"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(Agent)1457_storage)": {
+            "label": "mapping(bytes32 => struct AgentRegistry.Agent)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Agent)1457_storage": {
+            "label": "struct AgentRegistry.Agent",
+            "members": [
+              {
+                "label": "externalId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "reputationScore",
+                "type": "t_uint16",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "totalActions",
+                "type": "t_uint32",
+                "offset": 2,
+                "slot": "1"
+              },
+              {
+                "label": "successRate",
+                "type": "t_uint16",
+                "offset": 6,
+                "slot": "1"
+              },
+              {
+                "label": "status",
+                "type": "t_uint8",
+                "offset": 8,
+                "slot": "1"
+              },
+              {
+                "label": "registeredAt",
+                "type": "t_uint40",
+                "offset": 9,
+                "slot": "1"
+              },
+              {
+                "label": "lastUpdated",
+                "type": "t_uint40",
+                "offset": 14,
+                "slot": "1"
+              },
+              {
+                "label": "metadataHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint32": {
+            "label": "uint32",
+            "numberOfBytes": "4"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "783a4b84801facd2b39e6606e5ef34dcaa5256b93eba674ef7ce2cc6940c95ca": {
+      "address": "0xbcC8347758280894596e4A0d7369771825a98318",
+      "txHash": "0xe7c2ae9c90ebcef91a8523bdfc19e6ac1d3bd50e583aa9c982d63e34d34ffabe",
+      "layout": {
+        "solcVersion": "0.8.24",
+        "storage": [
+          {
+            "label": "certificates",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_mapping(t_bytes32,t_struct(Certificate)2071_storage)",
+            "contract": "CertificateRegistry",
+            "src": "contracts\\CertificateRegistry.sol:26"
+          },
+          {
+            "label": "agentCertificates",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_bytes32,t_array(t_bytes32)dyn_storage)",
+            "contract": "CertificateRegistry",
+            "src": "contracts\\CertificateRegistry.sol:27"
+          },
+          {
+            "label": "activeCertificate",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_bytes32,t_bytes32)",
+            "contract": "CertificateRegistry",
+            "src": "contracts\\CertificateRegistry.sol:28"
+          },
+          {
+            "label": "totalCertificates",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "CertificateRegistry",
+            "src": "contracts\\CertificateRegistry.sol:30"
+          },
+          {
+            "label": "activeCertificateCount",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "CertificateRegistry",
+            "src": "contracts\\CertificateRegistry.sol:31"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)73_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]",
+            "numberOfBytes": "32"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_array(t_bytes32)dyn_storage)": {
+            "label": "mapping(bytes32 => bytes32[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_bytes32)": {
+            "label": "mapping(bytes32 => bytes32)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(Certificate)2071_storage)": {
+            "label": "mapping(bytes32 => struct CertificateRegistry.Certificate)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Certificate)2071_storage": {
+            "label": "struct CertificateRegistry.Certificate",
+            "members": [
+              {
+                "label": "agentId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "scoreAtIssuance",
+                "type": "t_uint16",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "scopeHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "status",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "issuedAt",
+                "type": "t_uint40",
+                "offset": 1,
+                "slot": "3"
+              },
+              {
+                "label": "expiresAt",
+                "type": "t_uint40",
+                "offset": 6,
+                "slot": "3"
+              },
+              {
+                "label": "revokedAt",
+                "type": "t_uint40",
+                "offset": 11,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "69c9f72eb3fd9a1082407efb5b3b324236d155c8e413684aeaf670968309f76a": {
+      "address": "0x97b456625009C78e8177D5b7B039fFD364f013Be",
+      "txHash": "0xe828374d4fb478ecf42295e85e6dd0860c45941ebf351b7eac119c87059406d4",
+      "layout": {
+        "solcVersion": "0.8.24",
+        "storage": [
+          {
+            "label": "events",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_array(t_struct(ReputationEvent)2632_storage)dyn_storage",
+            "contract": "ReputationLedger",
+            "src": "contracts\\ReputationLedger.sol:25"
+          },
+          {
+            "label": "agentEvents",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_bytes32,t_array(t_uint256)dyn_storage)",
+            "contract": "ReputationLedger",
+            "src": "contracts\\ReputationLedger.sol:26"
+          },
+          {
+            "label": "totalEvents",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_uint256",
+            "contract": "ReputationLedger",
+            "src": "contracts\\ReputationLedger.sol:28"
+          },
+          {
+            "label": "totalSlashes",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint256",
+            "contract": "ReputationLedger",
+            "src": "contracts\\ReputationLedger.sol:29"
+          },
+          {
+            "label": "totalRewards",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_uint256",
+            "contract": "ReputationLedger",
+            "src": "contracts\\ReputationLedger.sol:30"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)73_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_array(t_struct(ReputationEvent)2632_storage)dyn_storage": {
+            "label": "struct ReputationLedger.ReputationEvent[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_array(t_uint256)dyn_storage)": {
+            "label": "mapping(bytes32 => uint256[])",
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReputationEvent)2632_storage": {
+            "label": "struct ReputationLedger.ReputationEvent",
+            "members": [
+              {
+                "label": "agentId",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "eventType",
+                "type": "t_uint8",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "scoreBefore",
+                "type": "t_uint16",
+                "offset": 1,
+                "slot": "1"
+              },
+              {
+                "label": "scoreAfter",
+                "type": "t_uint16",
+                "offset": 3,
+                "slot": "1"
+              },
+              {
+                "label": "evidenceHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "timestamp",
+                "type": "t_uint40",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint40": {
+            "label": "uint40",
+            "numberOfBytes": "5"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../db/prisma';
 import { generateApiKey, hashApiKey, authenticateApiKey, AuthenticatedRequest } from '../middleware/auth';
+import { registerAgentOnChain } from '../services/blockchain';
 
 const router = Router();
 
@@ -136,6 +137,9 @@ router.post('/agents', authenticateApiKey, async (req: AuthenticatedRequest, res
       }
     });
 
+    // Register on-chain (non-blocking — doesn't fail the API call)
+    const txHash = await registerAgentOnChain(agent.id, externalId, req.developer!.email);
+
     res.status(201).json({
       success: true,
       data: {
@@ -143,7 +147,8 @@ router.post('/agents', authenticateApiKey, async (req: AuthenticatedRequest, res
         externalId: agent.externalId,
         reputationScore: agent.reputationScore,
         status: agent.status,
-        createdAt: agent.createdAt
+        createdAt: agent.createdAt,
+        ...(txHash ? { onChainTx: txHash } : {})
       }
     });
   } catch (error) {

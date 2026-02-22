@@ -1,5 +1,6 @@
 import prisma from '../db/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { updateReputationOnChain, logReputationEventOnChain } from './blockchain';
 
 interface ReputationFactors {
   baseScore: number;
@@ -81,12 +82,30 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
 }
 
 export async function updateAgentReputation(agentId: string): Promise<number> {
+  const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+  const oldScore = agent?.reputationScore ?? 50;
+
   const factors = await calculateReputationScore(agentId);
 
   await prisma.agent.update({
     where: { id: agentId },
     data: { reputationScore: factors.totalScore }
   });
+
+  // Sync to blockchain (non-blocking)
+  if (agent) {
+    const successRate = agent.totalActions > 0
+      ? agent.successfulActions / agent.totalActions
+      : 1;
+    updateReputationOnChain(agentId, factors.totalScore, agent.totalActions, successRate).catch(() => {});
+
+    // Log the score change event on-chain
+    const eventType = factors.totalScore < oldScore ? 1 : 2; // 1=slash, 2=reward
+    logReputationEventOnChain(
+      agentId, eventType, oldScore, factors.totalScore,
+      `score_update:${agent.totalActions}actions`
+    ).catch(() => {});
+  }
 
   return factors.totalScore;
 }

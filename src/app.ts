@@ -11,8 +11,12 @@ import certificateRoutes from './routes/certificates';
 import wellknownRoutes from './routes/wellknown';
 import reportRoutes from './routes/reports';
 import dashboardRoutes from './routes/dashboard';
+import { initBlockchain } from './services/blockchain';
 
 const app = express();
+
+// Initialize blockchain connection (non-blocking — works without it)
+initBlockchain();
 
 // Middleware
 app.use(cors());
