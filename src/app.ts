@@ -15,6 +15,9 @@ import { initBlockchain } from './services/blockchain';
 
 const app = express();
 
+// Trust proxy (Heroku runs behind a reverse proxy)
+app.set('trust proxy', 1);
+
 // Initialize blockchain connection (non-blocking — works without it)
 initBlockchain();
 
