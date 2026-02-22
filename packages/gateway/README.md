@@ -46,6 +46,12 @@ const gateway = createGateway({
   },
   behavior: {
     maxActionsPerMinute: 30,
+    derivatives: {
+      enabled: true,
+      velocityThresholds: { actions_per_minute: 8, failures_per_minute: 3 },
+      useAccelerationBlocking: true,
+      predictiveBlockingSeconds: 30,
+    },
     onSuspiciousActivity: (event) => {
       console.warn('Suspicious agent:', event.flag, event.description);
     }
@@ -77,8 +83,21 @@ The gateway monitors agent behavior in real-time and detects:
 | `repeated_action` | Automation (same action on loop) |
 | `scope_violation` | Accessing above trust level |
 | `burst_detected` | Sudden activity after idle |
+| `velocity_spike` | Metric rate-of-change exceeds threshold (ramping attack) |
+| `accelerating_attack` | Metric acceleration indicates escalating threat |
+| `predictive_breach` | Forecasted score will breach block threshold in 30s |
 
 Agents get a behavioral score (0-100) that degrades with violations. Drop below threshold = blocked mid-session.
+
+### Derivative-Based Detection (NEW)
+
+The gateway now computes mathematical derivatives (velocity and acceleration) on behavioral metrics in real-time. This catches attacks that static thresholds miss:
+
+- **Velocity spike** — detects slow ramp-up attacks before they hit static limits
+- **Accelerating attack** — catches explosive probing and escalation patterns
+- **Predictive blocking** — forecasts behavioral score 30 seconds ahead and blocks before breach
+
+Configure via the `derivatives` option in `behavior` config.
 
 ## API
 

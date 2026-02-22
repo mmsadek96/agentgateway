@@ -10,6 +10,7 @@ interface ReputationFactors {
   successRateBonus: number;
   ageBonus: number;
   failurePenalty: number;
+  momentumAdjustment: number;
   totalScore: number;
 }
 
@@ -58,6 +59,39 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
   // Failure penalty (-5 per failure)
   const failurePenalty = agent.failedActions * 5;
 
+  // Momentum adjustment — recent behavior velocity
+  // Looks at last 10 reputation events to compute momentum
+  // Rapid recent failures create negative momentum; consistent successes create positive
+  let momentumAdjustment = 0;
+  const recentEvents = await prisma.reputationEvent.findMany({
+    where: { agentId },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+  });
+
+  if (recentEvents.length >= 3) {
+    // Calculate weighted average of recent score changes (more recent = heavier weight)
+    let weightedSum = 0;
+    let totalWeight = 0;
+    for (let i = 0; i < recentEvents.length; i++) {
+      const weight = recentEvents.length - i; // Most recent gets highest weight
+      weightedSum += recentEvents[i].scoreChange * weight;
+      totalWeight += weight;
+    }
+    const avgChange = weightedSum / totalWeight;
+
+    // Time factor: events clustered in time amplify momentum
+    const oldest = recentEvents[recentEvents.length - 1].createdAt.getTime();
+    const newest = recentEvents[0].createdAt.getTime();
+    const spanHours = Math.max(0.1, (newest - oldest) / (1000 * 60 * 60));
+
+    // Velocity = weighted average change per event, scaled by time density
+    const velocity = avgChange * Math.min(3, 1 / spanHours); // Compress to max 3x amplifier
+
+    // Cap momentum adjustment to [-10, +5] (punish fast, reward slow)
+    momentumAdjustment = Math.max(-10, Math.min(5, Math.round(velocity)));
+  }
+
   // Calculate total
   const totalScore = Math.max(0, Math.min(100,
     baseScore +
@@ -65,7 +99,8 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
     stakeBonus +
     vouchBonus +
     successRateBonus +
-    ageBonus -
+    ageBonus +
+    momentumAdjustment -
     failurePenalty
   ));
 
@@ -77,6 +112,7 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
     successRateBonus,
     ageBonus,
     failurePenalty,
+    momentumAdjustment,
     totalScore
   };
 }
@@ -99,11 +135,14 @@ export async function updateAgentReputation(agentId: string): Promise<number> {
       : 1;
     updateReputationOnChain(agentId, factors.totalScore, agent.totalActions, successRate).catch(() => {});
 
-    // Log the score change event on-chain
+    // Log the score change event on-chain (includes momentum metadata)
     const eventType = factors.totalScore < oldScore ? 1 : 2; // 1=slash, 2=reward
+    const momentumTag = factors.momentumAdjustment !== 0
+      ? `:momentum=${factors.momentumAdjustment > 0 ? '+' : ''}${factors.momentumAdjustment}`
+      : '';
     logReputationEventOnChain(
       agentId, eventType, oldScore, factors.totalScore,
-      `score_update:${agent.totalActions}actions`
+      `score_update:${agent.totalActions}actions${momentumTag}`
     ).catch(() => {});
   }
 

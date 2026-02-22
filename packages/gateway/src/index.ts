@@ -9,6 +9,7 @@ export { AgentGateway, createGateway } from './gateway';
 export { StationClient } from './station-client';
 export { ActionRegistry } from './action-registry';
 export { BehaviorTracker } from './behavior-tracker';
+export { DerivativeMonitor } from './derivative-monitor';
 export { MLBehaviorAnalyzer, createMLAnalyzer } from './ml-analyzer';
 
 export type {
@@ -26,7 +27,12 @@ export type {
   BehaviorEvent,
   BehaviorFlag,
   SessionStats,
-  AgentSession
+  AgentSession,
+  // Derivative monitoring types
+  DerivativeConfig,
+  DerivativeResult,
+  DerivativeState,
+  MetricSnapshot
 } from './types';
 
 export type {

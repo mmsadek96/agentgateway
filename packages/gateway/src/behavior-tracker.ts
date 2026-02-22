@@ -5,8 +5,10 @@ import {
   BehaviorFlag,
   AgentSession,
   SessionAction,
-  SessionStats
+  SessionStats,
+  DerivativeResult
 } from './types';
+import { DerivativeMonitor } from './derivative-monitor';
 
 /**
  * BehaviorTracker — real-time behavioral analysis of agent sessions.
@@ -25,9 +27,11 @@ import {
  */
 export class BehaviorTracker {
   private sessions: Map<string, AgentSession> = new Map();
-  private config: Required<Omit<BehaviorConfig, 'onSuspiciousActivity'>> & {
+  private config: Required<Omit<BehaviorConfig, 'onSuspiciousActivity' | 'derivatives'>> & {
     onSuspiciousActivity?: BehaviorConfig['onSuspiciousActivity'];
   };
+  private derivativeMonitor: DerivativeMonitor;
+  private derivativesEnabled: boolean;
   private cleanupInterval: ReturnType<typeof setInterval>;
 
   constructor(config: BehaviorConfig = {}) {
@@ -42,6 +46,10 @@ export class BehaviorTracker {
       blockThreshold: config.blockThreshold ?? 20,
       onSuspiciousActivity: config.onSuspiciousActivity,
     };
+
+    // Initialize derivative monitor
+    this.derivativesEnabled = config.derivatives?.enabled !== false;
+    this.derivativeMonitor = new DerivativeMonitor(config.derivatives);
 
     // Clean up expired sessions every 60 seconds
     this.cleanupInterval = setInterval(() => this.cleanupSessions(), 60_000);
@@ -128,6 +136,46 @@ export class BehaviorTracker {
     // Check 6: Burst detection (activity after idle)
     if (this.checkBurstPattern(session, now)) {
       newFlags.push('burst_detected');
+    }
+
+    // ─── Derivative-based checks (7, 8, 9) ───
+    let derivativeResult: DerivativeResult | undefined;
+    if (this.derivativesEnabled) {
+      // Compute current metric values from session
+      const oneMinuteAgo = now - 60_000;
+      const recentActions = session.actions.filter(a => a.timestamp > oneMinuteAgo);
+      const recentFailures = recentActions.filter(a => !a.success).length;
+      const recentUnique = new Set(recentActions.map(a => a.actionName)).size;
+      const totalSuccessRate = session.actions.length > 0
+        ? session.actions.filter(a => a.success).length / session.actions.length
+        : 1;
+
+      derivativeResult = this.derivativeMonitor.recordMetrics(agentId, {
+        actions_per_minute: recentActions.length,
+        failures_per_minute: recentFailures,
+        unique_actions_per_minute: recentUnique,
+        behavioral_score: session.behaviorScore,
+        success_rate: totalSuccessRate,
+      });
+
+      // Check 7: Velocity spike (rate of change exceeds threshold)
+      if (derivativeResult.flags.some(f => f.startsWith('velocity_spike'))) {
+        newFlags.push('velocity_spike');
+      }
+
+      // Check 8: Accelerating attack (acceleration exceeds threshold)
+      if (derivativeResult.flags.some(f => f.startsWith('accelerating_attack'))) {
+        newFlags.push('accelerating_attack');
+      }
+
+      // Check 9: Predictive breach (forecasted score below block threshold)
+      if (
+        derivativeResult.predictedScore !== null &&
+        derivativeResult.predictedScore <= this.config.blockThreshold &&
+        session.behaviorScore > this.config.blockThreshold // only flag if not already below
+      ) {
+        newFlags.push('predictive_breach');
+      }
     }
 
     // Apply penalties for NEW flags only
@@ -218,6 +266,7 @@ export class BehaviorTracker {
    */
   clearSession(agentId: string): void {
     this.sessions.delete(agentId);
+    this.derivativeMonitor.clearAgent(agentId);
   }
 
   /**
@@ -241,6 +290,7 @@ export class BehaviorTracker {
   destroy(): void {
     clearInterval(this.cleanupInterval);
     this.sessions.clear();
+    this.derivativeMonitor.clear();
   }
 
   // ─── Behavioral Checks ───
@@ -319,7 +369,7 @@ export class BehaviorTracker {
     const oneMinuteAgo = now - 60_000;
     const recentActions = session.actions.filter(a => a.timestamp > oneMinuteAgo);
 
-    return {
+    const stats: SessionStats = {
       totalActions: session.actions.length,
       successfulActions: session.actions.filter(a => a.success).length,
       failedActions: session.actions.filter(a => !a.success).length,
@@ -329,6 +379,18 @@ export class BehaviorTracker {
       scopeViolations: session.actions.filter(a => a.scopeViolation).length,
       flagsTriggered: Array.from(session.flags)
     };
+
+    // Include derivative data if available
+    if (this.derivativesEnabled) {
+      const dState = this.derivativeMonitor.getState(session.agentId);
+      if (dState) {
+        stats.velocities = dState.velocities;
+        stats.accelerations = dState.accelerations;
+        stats.predictedScore = dState.predictedScore;
+      }
+    }
+
+    return stats;
   }
 
   private getDescription(flag: BehaviorFlag): string {
@@ -339,7 +401,10 @@ export class BehaviorTracker {
       'repeated_action': `Agent repeated the same action ${this.config.maxRepeatedActionsPerMinute}+ times per minute (automation)`,
       'scope_violation': 'Agent attempted an action above their trust level',
       'session_anomaly': 'Unusual session pattern detected',
-      'burst_detected': 'Sudden burst of activity after idle period'
+      'burst_detected': 'Sudden burst of activity after idle period',
+      'velocity_spike': 'Metric rate-of-change exceeds threshold (ramping attack detected)',
+      'accelerating_attack': 'Metric acceleration indicates escalating threat pattern',
+      'predictive_breach': 'Forecasted behavioral score will breach block threshold within 30 seconds'
     };
     return descriptions[flag];
   }

@@ -354,4 +354,65 @@ router.get('/api/gateways', async (_req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /dashboard/api/agents/:agentId/momentum
+ * Reputation momentum for a specific agent (velocity based on recent events)
+ */
+router.get('/api/agents/:agentId/momentum', async (req: Request, res: Response) => {
+  try {
+    const { agentId } = req.params;
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+    if (!agent) {
+      return res.status(404).json({ success: false, error: 'Agent not found' });
+    }
+
+    // Get last 20 reputation events with timestamps
+    const events = await prisma.reputationEvent.findMany({
+      where: { agentId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // Calculate momentum (velocity of score changes)
+    let momentum = 0;
+    let trend: 'improving' | 'declining' | 'stable' = 'stable';
+
+    if (events.length >= 3) {
+      let weightedSum = 0;
+      let totalWeight = 0;
+      for (let i = 0; i < events.length; i++) {
+        const weight = events.length - i;
+        weightedSum += events[i].scoreChange * weight;
+        totalWeight += weight;
+      }
+      momentum = Math.round((weightedSum / totalWeight) * 100) / 100;
+
+      if (momentum > 0.5) trend = 'improving';
+      else if (momentum < -0.5) trend = 'declining';
+    }
+
+    // Build time series for charting
+    const timeSeries = events.reverse().map(e => ({
+      timestamp: e.createdAt.toISOString(),
+      type: e.eventType,
+      scoreChange: e.scoreChange,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        agentId,
+        currentScore: agent.reputationScore,
+        momentum,
+        trend,
+        recentEvents: timeSeries,
+        totalEvents: events.length,
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard momentum error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch momentum' });
+  }
+});
+
 export default router;

@@ -55,6 +55,9 @@ export interface BehaviorConfig {
 
   /** Callback when suspicious behavior is detected */
   onSuspiciousActivity?: (event: BehaviorEvent) => void;
+
+  /** Derivative-based behavioral analysis configuration (velocity, acceleration, predictive blocking) */
+  derivatives?: DerivativeConfig;
 }
 
 // ─── Action Definitions ───
@@ -185,7 +188,10 @@ export type BehaviorFlag =
   | 'repeated_action'      // Same action with same params (automation)
   | 'scope_violation'      // Attempted action above score threshold
   | 'session_anomaly'      // Unusual session pattern
-  | 'burst_detected';      // Sudden spike after idle period
+  | 'burst_detected'       // Sudden spike after idle period
+  | 'velocity_spike'       // Metric rate-of-change exceeds threshold
+  | 'accelerating_attack'  // Metric acceleration indicates escalating threat
+  | 'predictive_breach';   // Forecasted score will breach block threshold
 
 export interface BehaviorEvent {
   /** The agent ID */
@@ -221,6 +227,12 @@ export interface SessionStats {
   scopeViolations: number;
   /** Number of behavioral flags triggered */
   flagsTriggered: BehaviorFlag[];
+  /** Derivative velocities (rate of change per metric) — null if derivatives disabled */
+  velocities?: Partial<Record<string, number>>;
+  /** Derivative accelerations (rate of rate-of-change per metric) — null if derivatives disabled */
+  accelerations?: Partial<Record<string, number>>;
+  /** Predicted behavioral score in N seconds — null if not enough data */
+  predictedScore?: number | null;
 }
 
 export interface AgentSession {
@@ -253,4 +265,63 @@ export interface SessionAction {
   scopeViolation: boolean;
   /** Timestamp */
   timestamp: number;
+}
+
+// ─── Derivative Monitoring Types ───
+
+/** Configuration for derivative-based behavioral analysis */
+export interface DerivativeConfig {
+  /** Enable/disable derivative monitoring (default: true) */
+  enabled?: boolean;
+
+  /** Time window for derivative calculations in seconds (default: 180 = 3 min) */
+  windowSeconds?: number;
+
+  /** Minimum interval between metric samples in ms (default: 10000 = 10s) */
+  sampleIntervalMs?: number;
+
+  /** Maximum number of samples to keep per metric (default: 20) */
+  maxSamples?: number;
+
+  /** Exponential smoothing factor (0-1). Higher = less smoothing. (default: 0.3) */
+  smoothingFactor?: number;
+
+  /** Velocity thresholds per metric — exceeding triggers velocity_spike flag */
+  velocityThresholds?: Partial<Record<string, number>>;
+
+  /** Acceleration thresholds per metric — exceeding triggers accelerating_attack flag */
+  accelerationThresholds?: Partial<Record<string, number>>;
+
+  /** Whether to use acceleration for blocking decisions (default: true) */
+  useAccelerationBlocking?: boolean;
+
+  /** Seconds to forecast ahead for predictive blocking (default: 30) */
+  predictiveBlockingSeconds?: number;
+}
+
+/** Internal state for derivative tracking per agent */
+export interface DerivativeState {
+  /** Metric name → time series history */
+  history: Map<string, MetricSnapshot[]>;
+  /** Last time we recorded a sample */
+  lastSampleTime: number;
+}
+
+/** A single metric observation at a point in time */
+export interface MetricSnapshot {
+  timestamp: number;
+  value: number;
+  smoothedValue: number;
+}
+
+/** Result of derivative analysis for a single update */
+export interface DerivativeResult {
+  /** Current velocity (1st derivative) per metric */
+  velocities: Partial<Record<string, number>>;
+  /** Current acceleration (2nd derivative) per metric */
+  accelerations: Partial<Record<string, number>>;
+  /** Derivative-specific flags triggered */
+  flags: string[];
+  /** Predicted behavioral score in N seconds (null if not enough data) */
+  predictedScore: number | null;
 }
