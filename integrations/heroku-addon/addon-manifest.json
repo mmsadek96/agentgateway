@@ -1,45 +1,49 @@
 {
   "id": "agenttrust",
   "api": {
-    "config_vars_prefix": "AGENTTRUST",
+    "regions": [
+      "us",
+      "eu"
+    ],
+    "password": "kf3xUHZvJTIvwds4PBlUm0BzSJLdnH544KYTByOpfWICtTF",
+    "requires": [],
+    "sso_salt": "XPErsqebx2My7llVRBFSOjJT1iT4Y9nE739zIa3fYlUTJGQ",
+    "production": {
+      "sso_url": "https://agenttrust-addon-b1510a9f2c47.herokuapp.com/heroku/sso",
+      "base_url": "https://agenttrust-addon-b1510a9f2c47.herokuapp.com"
+    },
     "config_vars": [
       "AGENTTRUST_STATION_URL",
       "AGENTTRUST_API_KEY",
       "AGENTTRUST_AGENT_ID"
     ],
-    "password": "afa879966438ce7623a803e20f60fa0228ba541f9ac2c223fd45c9b12ca9e77a",
-    "sso_salt": "8653191aac1fbd8689bcadf1f3d2be555092ba45674b045e6f239a3831818771",
-    "regions": ["us", "eu"],
-    "requires": [],
-    "production": {
-      "base_url": "https://agenttrust-addon-b1510a9f2c47.herokuapp.com",
-      "sso_url": "https://agenttrust-addon-b1510a9f2c47.herokuapp.com/heroku/sso"
-    }
+    "config_vars_prefix": "AGENTTRUST"
   },
   "plans": [
     {
-      "slug": "free",
       "name": "Free",
+      "slug": "free",
       "price": {
-        "cents": 0,
-        "unit": "month"
+        "unit": "month",
+        "cents": 0
       }
     },
     {
-      "slug": "starter",
       "name": "Starter",
+      "slug": "starter",
       "price": {
-        "cents": 4900,
-        "unit": "month"
+        "unit": "month",
+        "cents": 4900
       }
     },
     {
-      "slug": "pro",
       "name": "Pro",
+      "slug": "pro",
       "price": {
-        "cents": 19900,
-        "unit": "month"
+        "unit": "month",
+        "cents": 19900
       }
     }
-  ]
+  ],
+  "$base": 177181940852930
 }
