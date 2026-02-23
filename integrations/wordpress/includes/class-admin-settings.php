@@ -38,7 +38,7 @@ class AgentTrust_Admin_Settings {
         register_setting( 'agenttrust_settings', 'agenttrust_station_url', array(
             'type'              => 'string',
             'sanitize_callback' => 'esc_url_raw',
-            'default'           => 'https://station.agenttrust.org',
+            'default'           => 'https://agentgateway-6f041c655eb3.herokuapp.com',
         ) );
 
         register_setting( 'agenttrust_settings', 'agenttrust_api_key', array(
@@ -155,9 +155,9 @@ class AgentTrust_Admin_Settings {
      * Render the Station URL field.
      */
     public function render_station_url_field() {
-        $value = get_option( 'agenttrust_station_url', 'https://station.agenttrust.org' );
+        $value = get_option( 'agenttrust_station_url', 'https://agentgateway-6f041c655eb3.herokuapp.com' );
         printf(
-            '<input type="url" id="agenttrust_station_url" name="agenttrust_station_url" value="%s" class="regular-text" placeholder="https://station.agenttrust.org" />',
+            '<input type="url" id="agenttrust_station_url" name="agenttrust_station_url" value="%s" class="regular-text" placeholder="https://agentgateway-6f041c655eb3.herokuapp.com" />',
             esc_attr( $value )
         );
         echo '<p class="description">' . esc_html__( 'The URL of your AgentTrust Station instance.', 'agenttrust-gateway' ) . '</p>';

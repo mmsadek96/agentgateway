@@ -34,7 +34,7 @@ require_once AGENTTRUST_PLUGIN_DIR . 'includes/class-rest-api.php';
  * Sets default option values for the plugin configuration.
  */
 function agenttrust_activate() {
-    add_option( 'agenttrust_station_url', 'https://station.agenttrust.org' );
+    add_option( 'agenttrust_station_url', 'https://agentgateway-6f041c655eb3.herokuapp.com' );
     add_option( 'agenttrust_api_key', '' );
     add_option( 'agenttrust_gateway_id', wp_generate_uuid4() );
     add_option( 'agenttrust_min_score_default', 30 );

@@ -28,7 +28,7 @@ ln -s agenttrust/integrations/wordpress agenttrust-gateway
 ## Configuration
 
 1. Navigate to **Settings > AgentTrust** in the WordPress admin.
-2. Enter your **Station URL** (default: `https://station.agenttrust.org`).
+2. Enter your **Station URL** (default: `https://agentgateway-6f041c655eb3.herokuapp.com`).
 3. Enter your **API Key** obtained from the AgentTrust Station.
 4. The **Gateway ID** is auto-generated on activation. You can change it if needed.
 5. Set the **Default Minimum Score** for actions that do not specify their own.

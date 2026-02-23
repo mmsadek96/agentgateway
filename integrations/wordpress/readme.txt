@@ -57,7 +57,7 @@ The AgentTrust Station is the central authority that issues and verifies agent c
 
 = Do I need to run my own Station? =
 
-No. You can use the public AgentTrust Station at `https://station.agenttrust.org`, or you can self-host your own instance for full control.
+No. You can use the public AgentTrust Station at `https://agentgateway-6f041c655eb3.herokuapp.com`, or you can self-host your own instance for full control.
 
 = What trust scores should I set for my actions? =
 
