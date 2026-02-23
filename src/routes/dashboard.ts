@@ -9,7 +9,12 @@ const router = Router();
 function dashboardAuth(req: Request, res: Response, next: NextFunction): void {
   const adminKey = process.env.DASHBOARD_API_KEY;
   if (!adminKey) {
-    next(); // No key configured = public access (local dev only)
+    // In production, fail closed — require admin key
+    if (process.env.NODE_ENV === 'production') {
+      res.status(401).json({ success: false, error: 'DASHBOARD_API_KEY not configured' });
+      return;
+    }
+    next(); // No key configured in dev = public access
     return;
   }
   const provided = (req.headers['x-admin-key'] as string) || (req.query.key as string);

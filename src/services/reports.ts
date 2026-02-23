@@ -27,8 +27,13 @@ export async function submitReport(report: GatewayReportRequest & { developerId?
   }
 
   // Verify the submitting developer owns this agent (prevents cross-developer manipulation)
-  if (developerId && agent.developerId !== developerId) {
-    throw new Error('You can only submit reports for your own agents');
+  if (developerId) {
+    if (agent.developerId !== developerId) {
+      throw new Error('You can only submit reports for your own agents');
+    }
+  } else {
+    // developerId is required for authenticated requests — reject unauthenticated reports
+    throw new Error('Developer authentication required to submit reports');
   }
 
   // Validate the certificate was real

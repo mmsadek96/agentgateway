@@ -72,6 +72,7 @@ router.post('/buy', authenticateApiKey, async (req: AuthenticatedRequest, res: R
 /**
  * POST /insurance/:id/claim
  * Authenticated — file a claim against a policy
+ * Body: { agentId }
  */
 router.post('/:id/claim', authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
   const policyId = parseInt(req.params.id);
@@ -79,6 +80,12 @@ router.post('/:id/claim', authenticateApiKey, async (req: AuthenticatedRequest, 
     res.status(400).json({ success: false, error: 'Invalid policy ID' });
     return;
   }
+  const { agentId } = req.body;
+  if (!agentId) {
+    res.status(400).json({ success: false, error: 'agentId required' });
+    return;
+  }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   const txHash = await fileInsuranceClaim(policyId);
   if (!txHash) {
@@ -86,7 +93,7 @@ router.post('/:id/claim', authenticateApiKey, async (req: AuthenticatedRequest, 
     return;
   }
 
-  res.json({ success: true, data: { txHash, policyId } });
+  res.json({ success: true, data: { txHash, policyId, agentId } });
 });
 
 export default router;

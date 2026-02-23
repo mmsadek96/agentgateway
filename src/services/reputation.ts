@@ -167,7 +167,8 @@ export async function updateAgentReputation(agentId: string): Promise<number> {
     const successRate = agent.totalActions > 0
       ? agent.successfulActions / agent.totalActions
       : 1;
-    updateReputationOnChain(agentId, factors.totalScore, agent.totalActions, successRate).catch(() => {});
+    updateReputationOnChain(agentId, factors.totalScore, agent.totalActions, successRate)
+      .catch((err) => console.error('[Blockchain] Failed to sync reputation on-chain:', err.message));
 
     // Log the score change event on-chain (includes momentum metadata)
     const eventType = factors.totalScore < oldScore ? 1 : 2; // 1=slash, 2=reward
@@ -177,7 +178,7 @@ export async function updateAgentReputation(agentId: string): Promise<number> {
     logReputationEventOnChain(
       agentId, eventType, oldScore, factors.totalScore,
       `score_update:${agent.totalActions}actions${momentumTag}`
-    ).catch(() => {});
+    ).catch((err) => console.error('[Blockchain] Failed to log reputation event on-chain:', err.message));
   }
 
   return factors.totalScore;

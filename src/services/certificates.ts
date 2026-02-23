@@ -81,7 +81,8 @@ export async function issueCertificate(
   });
 
   // Issue certificate on-chain (non-blocking)
-  issueCertificateOnChain(jti, agent.id, score, scope, expiresAt).catch(() => {});
+  issueCertificateOnChain(jti, agent.id, score, scope, expiresAt)
+    .catch((err) => console.error('[Blockchain] Failed to issue certificate on-chain:', err.message));
 
   return { token, expiresAt, score };
 }
@@ -127,7 +128,8 @@ export async function revokeCertificate(jti: string): Promise<boolean> {
       data: { revoked: true }
     });
     // Revoke on-chain too (non-blocking)
-    revokeCertificateOnChain(jti).catch(() => {});
+    revokeCertificateOnChain(jti)
+      .catch((err) => console.error('[Blockchain] Failed to revoke certificate on-chain:', err.message));
     return true;
   } catch {
     return false;

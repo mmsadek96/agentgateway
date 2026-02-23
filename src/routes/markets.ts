@@ -116,6 +116,13 @@ router.post('/:id/settle', authenticateApiKey, async (req: AuthenticatedRequest,
  */
 router.post('/:id/claim', authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
   const marketId = parseInt(req.params.id);
+  const { agentId } = req.body;
+  if (!agentId) {
+    res.status(400).json({ success: false, error: 'agentId required' });
+    return;
+  }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
+
   const claimantAddress = process.env.DEPLOYER_ADDRESS || '0x5F3B19B9AB09f10cd176a401618c883473006E6A';
   const txHash = await claimWinnings(marketId, claimantAddress);
   if (!txHash) {
@@ -123,7 +130,7 @@ router.post('/:id/claim', authenticateApiKey, async (req: AuthenticatedRequest, 
     return;
   }
 
-  res.json({ success: true, data: { txHash, marketId } });
+  res.json({ success: true, data: { txHash, marketId, agentId } });
 });
 
 export default router;
