@@ -179,8 +179,10 @@ export class BehaviorTracker {
     }
 
     // Apply penalties for NEW flags only
+    const trulyNewFlags = new Set<BehaviorFlag>();
     for (const flag of newFlags) {
       if (!session.flags.has(flag)) {
+        trulyNewFlags.add(flag);
         session.flags.add(flag);
         session.behaviorScore = Math.max(0, session.behaviorScore - this.config.violationPenalty);
 
@@ -202,14 +204,14 @@ export class BehaviorTracker {
 
     // For repeated violations of the SAME type, apply reduced penalties
     for (const flag of newFlags) {
-      if (session.flags.has(flag) && flag !== 'scope_violation') {
+      if (!trulyNewFlags.has(flag) && flag !== 'scope_violation') {
         // Escalating penalty: each repeat costs more
         session.behaviorScore = Math.max(0, session.behaviorScore - Math.floor(this.config.violationPenalty / 2));
       }
     }
 
     // Scope violations always cost (they're deliberate)
-    if (!scoreMet && session.flags.has('scope_violation')) {
+    if (!scoreMet && !trulyNewFlags.has('scope_violation')) {
       session.behaviorScore = Math.max(0, session.behaviorScore - this.config.violationPenalty);
     }
 

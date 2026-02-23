@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { authenticateApiKey, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateApiKey, AuthenticatedRequest, verifyAgentOwnership } from '../middleware/auth';
 import {
   mintVouchNft, getVouchNftInfo, getVouchMarketStats, isDefiEnabled
 } from '../services/defi';
@@ -31,6 +31,7 @@ router.post('/mint', authenticateApiKey, async (req: AuthenticatedRequest, res: 
     res.status(400).json({ success: false, error: 'voucherAgentId and vouchedAgentId required' });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, voucherAgentId, res)) return;
 
   const txHash = await mintVouchNft(voucherAgentId, vouchedAgentId, weight || 1);
   if (!txHash) {

@@ -14,8 +14,8 @@ interface ReportResult {
  * Process a behavior report from a gateway.
  * Creates action records, updates agent stats, and recalculates reputation.
  */
-export async function submitReport(report: GatewayReportRequest): Promise<ReportResult> {
-  const { agentId, gatewayId, actions, certificateJti } = report;
+export async function submitReport(report: GatewayReportRequest & { developerId?: string }): Promise<ReportResult> {
+  const { agentId, gatewayId, actions, certificateJti, developerId } = report;
 
   // Validate the agent exists
   const agent = await prisma.agent.findUnique({
@@ -24,6 +24,11 @@ export async function submitReport(report: GatewayReportRequest): Promise<Report
 
   if (!agent) {
     throw new Error('Agent not found');
+  }
+
+  // Verify the submitting developer owns this agent (prevents cross-developer manipulation)
+  if (developerId && agent.developerId !== developerId) {
+    throw new Error('You can only submit reports for your own agents');
   }
 
   // Validate the certificate was real

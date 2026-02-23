@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { authenticateApiKey, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateApiKey, AuthenticatedRequest, verifyAgentOwnership } from '../middleware/auth';
 import {
   depositInsuranceCollateral, buyInsurancePolicy, fileInsuranceClaim,
   getInsuranceStats, isDefiEnabled
 } from '../services/defi';
-import { uuidToBytes32 } from '../services/blockchain';
 
 const router = Router();
 
@@ -33,6 +32,7 @@ router.post('/collateral/deposit', authenticateApiKey, async (req: Authenticated
     res.status(400).json({ success: false, error: 'agentId and amount required' });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   const txHash = await depositInsuranceCollateral(agentId, amount);
   if (!txHash) {
@@ -57,6 +57,7 @@ router.post('/buy', authenticateApiKey, async (req: AuthenticatedRequest, res: R
     });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   const insuredAddress = process.env.DEPLOYER_ADDRESS || '0x5F3B19B9AB09f10cd176a401618c883473006E6A';
   const txHash = await buyInsurancePolicy(agentId, insuredAddress, coverageAmount, triggerScore, expiresAt);

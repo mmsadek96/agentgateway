@@ -46,7 +46,7 @@ router.post('/', authenticateApiKey, async (req: AuthenticatedRequest, res: Resp
       }
     }
 
-    const result = await submitReport({ agentId, gatewayId, actions, certificateJti });
+    const result = await submitReport({ agentId, gatewayId, actions, certificateJti, developerId: req.developer?.id });
 
     res.json({
       success: true,

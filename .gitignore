@@ -13,3 +13,9 @@ packages/*/node_modules/
 # Confidential internal docs
 STRATEGY.md
 launch/
+
+# Docker local dev secrets
+.env.docker
+
+# Heroku addon manifest (contains secrets)
+integrations/heroku-addon/addon-manifest.json

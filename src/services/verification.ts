@@ -26,22 +26,12 @@ export async function verifyAgent(options: VerificationOptions): Promise<Verific
   });
 
   if (!agent) {
-    // Create action record for denied request
-    const action = await prisma.action.create({
-      data: {
-        agentId: 'unknown',
-        actionType,
-        decision: 'denied',
-        reason: 'Agent not found',
-        metadata: context
-      }
-    });
-
+    // Return denial without creating a broken action record (FK constraint)
     return {
       allowed: false,
       score: 0,
       reason: 'Agent not registered',
-      actionId: action.id
+      actionId: 'none'
     };
   }
 
@@ -155,7 +145,7 @@ export async function reportOutcome(
       where: { id: action.agentId },
       data: { successfulActions: { increment: 1 } }
     });
-    await recordReputationEvent(action.agentId, 'success', 0);
+    await recordReputationEvent(action.agentId, 'success', 2);
   } else {
     await prisma.agent.update({
       where: { id: action.agentId },

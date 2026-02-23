@@ -35,16 +35,30 @@ app.use(helmet({
 }));
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : [
+        /\.herokuapp\.com$/,
+        /\.agenttrust\.dev$/,
+        /^https?:\/\/localhost(:\d+)?$/,
+      ],
+  credentials: true,
+}));
 app.use(express.json());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+// Rate limiting — separate limits for authenticated vs public
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500, // authenticated API users get higher limit
   message: { success: false, error: 'Too many requests, please try again later' }
 });
-app.use(limiter);
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100, // public endpoints
+  message: { success: false, error: 'Too many requests, please try again later' }
+});
+app.use(publicLimiter);
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));

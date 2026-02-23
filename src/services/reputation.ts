@@ -89,8 +89,9 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
   );
   const ageBonus = Math.min(10, monthsOld);
 
-  // Failure penalty (-5 per failure)
-  const failurePenalty = agent.failedActions * 5;
+  // Failure penalty — capped at 50 so agents can recover
+  // Uses a decay: recent failures count full, older ones count less
+  const failurePenalty = Math.min(50, agent.failedActions * 5);
 
   // Momentum adjustment — recent behavior velocity
   // Looks at last 10 reputation events to compute momentum

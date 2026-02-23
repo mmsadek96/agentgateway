@@ -1,9 +1,24 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
 import prisma from '../db/prisma';
 import { getDefiOverview, isDefiEnabled } from '../services/defi';
 
 const router = Router();
+
+// ─── Admin key guard for dashboard API ───
+function dashboardAuth(req: Request, res: Response, next: NextFunction): void {
+  const adminKey = process.env.DASHBOARD_API_KEY;
+  if (!adminKey) {
+    next(); // No key configured = public access (local dev only)
+    return;
+  }
+  const provided = (req.headers['x-admin-key'] as string) || (req.query.key as string);
+  if (provided !== adminKey) {
+    res.status(401).json({ success: false, error: 'Dashboard access requires admin key' });
+    return;
+  }
+  next();
+}
 
 // ─── Dashboard Page ───
 
@@ -17,7 +32,7 @@ router.get('/', (_req: Request, res: Response) => {
  * GET /dashboard/api/overview
  * High-level platform stats: total developers, agents, actions, certificates
  */
-router.get('/api/overview', async (_req: Request, res: Response) => {
+router.get('/api/overview', dashboardAuth, async (_req: Request, res: Response) => {
   try {
     const [
       totalDevelopers,
@@ -75,7 +90,7 @@ router.get('/api/overview', async (_req: Request, res: Response) => {
  * GET /dashboard/api/agents
  * List all agents with their reputation scores and stats
  */
-router.get('/api/agents', async (req: Request, res: Response) => {
+router.get('/api/agents', dashboardAuth, async (req: Request, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     const sortBy = (req.query.sort as string) || 'reputationScore';
@@ -86,7 +101,7 @@ router.get('/api/agents', async (req: Request, res: Response) => {
       orderBy: { [sortBy]: order },
       include: {
         developer: {
-          select: { companyName: true, email: true }
+          select: { companyName: true }
         },
         _count: {
           select: {
@@ -133,7 +148,7 @@ router.get('/api/agents', async (req: Request, res: Response) => {
  * GET /dashboard/api/actions/recent
  * Most recent actions across all agents
  */
-router.get('/api/actions/recent', async (req: Request, res: Response) => {
+router.get('/api/actions/recent', dashboardAuth, async (req: Request, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 30, 100);
 
@@ -171,7 +186,7 @@ router.get('/api/actions/recent', async (req: Request, res: Response) => {
  * GET /dashboard/api/reputation/distribution
  * Distribution of agent reputation scores (for histogram)
  */
-router.get('/api/reputation/distribution', async (_req: Request, res: Response) => {
+router.get('/api/reputation/distribution', dashboardAuth, async (_req: Request, res: Response) => {
   try {
     const agents = await prisma.agent.findMany({
       select: { reputationScore: true }
@@ -217,7 +232,7 @@ router.get('/api/reputation/distribution', async (_req: Request, res: Response) 
  * GET /dashboard/api/activity/timeline
  * Actions over time (grouped by hour, last 24h)
  */
-router.get('/api/activity/timeline', async (_req: Request, res: Response) => {
+router.get('/api/activity/timeline', dashboardAuth, async (_req: Request, res: Response) => {
   try {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -262,7 +277,7 @@ router.get('/api/activity/timeline', async (_req: Request, res: Response) => {
  * GET /dashboard/api/certificates/recent
  * Recently issued certificates
  */
-router.get('/api/certificates/recent', async (req: Request, res: Response) => {
+router.get('/api/certificates/recent', dashboardAuth, async (req: Request, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
 
@@ -299,7 +314,7 @@ router.get('/api/certificates/recent', async (req: Request, res: Response) => {
  * GET /dashboard/api/gateways
  * Gateway report summary (which gateways are reporting)
  */
-router.get('/api/gateways', async (_req: Request, res: Response) => {
+router.get('/api/gateways', dashboardAuth, async (_req: Request, res: Response) => {
   try {
     const reports = await prisma.gatewayReport.findMany({
       select: {
@@ -360,7 +375,7 @@ router.get('/api/gateways', async (_req: Request, res: Response) => {
  * GET /dashboard/api/defi
  * DeFi ecosystem stats: token, staking, markets, insurance, vouches
  */
-router.get('/api/defi', async (_req: Request, res: Response) => {
+router.get('/api/defi', dashboardAuth, async (_req: Request, res: Response) => {
   try {
     if (!isDefiEnabled()) {
       return res.json({
@@ -448,7 +463,7 @@ router.get('/api/defi', async (_req: Request, res: Response) => {
  * GET /dashboard/api/agents/:agentId/momentum
  * Reputation momentum for a specific agent (velocity based on recent events)
  */
-router.get('/api/agents/:agentId/momentum', async (req: Request, res: Response) => {
+router.get('/api/agents/:agentId/momentum', dashboardAuth, async (req: Request, res: Response) => {
   try {
     const { agentId } = req.params;
     const agent = await prisma.agent.findUnique({ where: { id: agentId } });

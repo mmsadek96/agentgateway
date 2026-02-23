@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { authenticateApiKey, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateApiKey, AuthenticatedRequest, verifyAgentOwnership } from '../middleware/auth';
 import {
   createMarket, placeBet, settleMarket, claimWinnings,
   getMarketInfo, getMarketStats, isDefiEnabled
@@ -52,6 +52,7 @@ router.post('/create', authenticateApiKey, async (req: AuthenticatedRequest, res
     res.status(400).json({ success: false, error: 'agentId, targetScore, and expiresAt required' });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   const txHash = await createMarket(agentId, targetScore, expiresAt);
   if (!txHash) {
@@ -75,6 +76,7 @@ router.post('/:id/bet', authenticateApiKey, async (req: AuthenticatedRequest, re
     res.status(400).json({ success: false, error: 'marketId, side, amount, agentId required' });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   if (side !== 'yes' && side !== 'no') {
     res.status(400).json({ success: false, error: 'side must be "yes" or "no"' });

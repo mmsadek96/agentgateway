@@ -73,6 +73,12 @@ app.get("/auth", (req: Request, res: Response) => {
     return;
   }
 
+  // SSRF protection: validate shop domain format
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/.test(shop)) {
+    res.status(400).json({ error: "Invalid shop domain. Must be a valid .myshopify.com domain" });
+    return;
+  }
+
   const redirectUri = `https://${HOST}/auth/callback`;
   const nonce = generateNonce();
 
@@ -100,6 +106,12 @@ app.get("/auth/callback", async (req: Request, res: Response) => {
 
   if (!shop || !code) {
     res.status(400).json({ error: "Missing shop or code parameter" });
+    return;
+  }
+
+  // SSRF protection
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/.test(shop)) {
+    res.status(400).json({ error: "Invalid shop domain" });
     return;
   }
 
@@ -164,27 +176,65 @@ app.get("/auth/callback", async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 /**
+ * Verify an agent certificate with the AgentTrust Station.
+ * Returns the verified trust score — never trusts client-provided scores.
+ */
+async function verifyCertificate(
+  authHeader: string | undefined
+): Promise<{ score: number; agentId: string } | null> {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+
+  const token = authHeader.slice(7);
+  if (!token) return null;
+
+  const STATION_URL =
+    process.env.AGENTTRUST_STATION_URL ||
+    "https://agentgateway-6f041c655eb3.herokuapp.com";
+
+  try {
+    const res = await fetch(`${STATION_URL}/certificates/verify`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as {
+      success: boolean;
+      data?: { score?: number; agentId?: string };
+    };
+    if (!data.success || !data.data) return null;
+
+    return { score: data.data.score ?? 0, agentId: data.data.agentId ?? "unknown" };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The gateway endpoint accepts action requests from AI agents.
  *
- * Expected body:
- * {
- *   "shop": "example.myshopify.com",
- *   "action": "search_products",
- *   "params": { "query": "blue shirt" },
- *   "trust_score": 45
- * }
+ * Agents MUST provide a valid AgentTrust certificate in the
+ * Authorization header. The trust score is read from the verified
+ * certificate — never from the request body.
  */
 const shopifyActions = createShopifyActions(() => {
-  // The actual shop client is resolved per-request inside the route handler.
-  // This placeholder is overridden below.
   throw new Error("Shop client not initialised for this request");
 });
 
 app.post("/agent-gateway", async (req: Request, res: Response) => {
-  const { shop, action, params, trust_score } = req.body;
+  const { shop, action, params } = req.body;
 
   if (!shop || !action) {
     res.status(400).json({ error: "Missing required fields: shop, action" });
+    return;
+  }
+
+  // Certificate verification — single point of entry enforcement
+  const verified = await verifyCertificate(req.headers.authorization);
+  if (!verified) {
+    res.status(401).json({
+      error: "Valid AgentTrust certificate required",
+      hint: "Obtain a certificate from the AgentTrust Station and pass it as a Bearer token",
+    });
     return;
   }
 
@@ -197,13 +247,12 @@ app.post("/agent-gateway", async (req: Request, res: Response) => {
     return;
   }
 
-  // Enforce minimum trust score
-  const score = typeof trust_score === "number" ? trust_score : 0;
-  if (score < actionDef.minScore) {
+  // Enforce minimum trust score from VERIFIED certificate (not request body)
+  if (verified.score < actionDef.minScore) {
     res.status(403).json({
       error: "Insufficient trust score",
       required: actionDef.minScore,
-      provided: score,
+      verified_score: verified.score,
       action,
     });
     return;
@@ -221,14 +270,11 @@ app.post("/agent-gateway", async (req: Request, res: Response) => {
   }
 
   try {
-    // Resolve the shop client for this specific request
     const client = getClientForShop(shop);
-
-    // Build a request-scoped actions map pointing at the correct client
     const requestActions = createShopifyActions(() => client);
     const result = await requestActions[action].handler(params || {});
 
-    res.json({ success: true, action, result });
+    res.json({ success: true, action, result, agent: verified.agentId });
   } catch (err: any) {
     console.error(`[Gateway] Action "${action}" failed:`, err);
     res.status(500).json({ error: err.message, action });

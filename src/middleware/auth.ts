@@ -84,6 +84,29 @@ export async function authenticateApiKey(
   }
 }
 
+/**
+ * Verify that the authenticated developer owns the specified agent.
+ */
+export async function verifyAgentOwnership(
+  developerId: string,
+  agentId: string,
+  res: Response
+): Promise<boolean> {
+  const agent = await prisma.agent.findUnique({
+    where: { id: agentId },
+    select: { developerId: true }
+  });
+  if (!agent) {
+    res.status(404).json({ success: false, error: 'Agent not found' });
+    return false;
+  }
+  if (agent.developerId !== developerId) {
+    res.status(403).json({ success: false, error: 'You do not own this agent' });
+    return false;
+  }
+  return true;
+}
+
 export function generateApiKey(): string {
   // Use cryptographically secure random bytes instead of Math.random()
   const randomBytes = crypto.randomBytes(32);

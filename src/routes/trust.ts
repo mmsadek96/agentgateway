@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { authenticateApiKey, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateApiKey, AuthenticatedRequest, verifyAgentOwnership } from '../middleware/auth';
 import {
   getTrustBalance, getTrustStats, mintTrust,
   stakeForAgent, requestUnstake, completeUnstake, getStakeInfo, getStakingStats,
@@ -28,6 +28,7 @@ router.get('/stats', async (_req: Request, res: Response) => {
  */
 router.get('/balance/:agentId', authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
   const { agentId } = req.params;
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
   if (!isDefiEnabled()) {
     res.json({ success: true, data: { enabled: false } });
     return;
@@ -54,6 +55,7 @@ router.post('/stake', authenticateApiKey, async (req: AuthenticatedRequest, res:
     res.status(400).json({ success: false, error: 'agentId and amount required' });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   const txHash = await stakeForAgent(agentId, amount);
   if (!txHash) {
@@ -75,6 +77,7 @@ router.post('/unstake/request', authenticateApiKey, async (req: AuthenticatedReq
     res.status(400).json({ success: false, error: 'agentId and amount required' });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   const txHash = await requestUnstake(agentId, amount);
   if (!txHash) {
@@ -96,6 +99,7 @@ router.post('/unstake/complete', authenticateApiKey, async (req: AuthenticatedRe
     res.status(400).json({ success: false, error: 'agentId required' });
     return;
   }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
   const txHash = await completeUnstake(agentId);
   if (!txHash) {
@@ -111,6 +115,7 @@ router.post('/unstake/complete', authenticateApiKey, async (req: AuthenticatedRe
  * Authenticated — staking info for an agent
  */
 router.get('/stake/:agentId', authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
+  if (!await verifyAgentOwnership(req.developer!.id, req.params.agentId, res)) return;
   const stakeInfo = await getStakeInfo(req.params.agentId);
   res.json({ success: true, data: stakeInfo });
 });

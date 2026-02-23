@@ -31,9 +31,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/anthropics/agenttrust"
-Repository = "https://github.com/anthropics/agenttrust"
-Documentation = "https://github.com/anthropics/agenttrust#readme"
+Homepage = "https://github.com/mmsadek96/agentgateway"
+Repository = "https://github.com/mmsadek96/agentgateway"
+Documentation = "https://github.com/mmsadek96/agentgateway#readme"
 
 [tool.setuptools.packages.find]
 include = ["langchain_agenttrust*"]
