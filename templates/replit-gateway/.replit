@@ -1,0 +1,9 @@
+run = "npx ts-node index.ts"
+entrypoint = "index.ts"
+language = "typescript"
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+STATION_URL = "https://agentgateway-6f041c655eb3.herokuapp.com"

@@ -1,0 +1,168 @@
+/**
+ * AgentTrust Gateway - Admin Styles
+ *
+ * Simple styles for the settings page with proper spacing
+ * and connection status indicators.
+ */
+
+/* Settings page wrapper */
+.agenttrust-settings-wrap {
+    max-width: 900px;
+}
+
+/* Connection status banner */
+.agenttrust-status-banner {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-left-width: 4px;
+    padding: 16px 20px;
+    margin: 20px 0;
+}
+
+.agenttrust-status-banner h2 {
+    margin-top: 0;
+    font-size: 14px;
+}
+
+.agenttrust-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+}
+
+/* Status dot indicator */
+.agenttrust-status-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.agenttrust-status-dot.connected {
+    background-color: #00a32a;
+    box-shadow: 0 0 0 2px rgba(0, 163, 42, 0.2);
+}
+
+.agenttrust-status-dot.disconnected {
+    background-color: #d63638;
+    box-shadow: 0 0 0 2px rgba(214, 54, 56, 0.2);
+}
+
+.agenttrust-status-text {
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.agenttrust-discovery-url {
+    margin-top: 10px;
+}
+
+.agenttrust-discovery-url code {
+    background: #f0f0f1;
+    padding: 2px 6px;
+    font-size: 13px;
+}
+
+/* Actions section */
+.agenttrust-actions-section {
+    margin-top: 30px;
+}
+
+.agenttrust-actions-section h2 {
+    font-size: 1.3em;
+    margin-bottom: 8px;
+}
+
+.agenttrust-actions-table {
+    margin-top: 12px;
+}
+
+.agenttrust-actions-table th {
+    font-weight: 600;
+}
+
+.agenttrust-actions-table td {
+    vertical-align: top;
+    padding: 10px;
+}
+
+.agenttrust-actions-table code {
+    background: #f0f0f1;
+    padding: 2px 6px;
+    font-size: 13px;
+}
+
+/* Score badges */
+.agenttrust-score-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    min-width: 30px;
+}
+
+.agenttrust-score-badge.agenttrust-score-low {
+    background-color: #e6f7e9;
+    color: #00a32a;
+}
+
+.agenttrust-score-badge.agenttrust-score-high {
+    background-color: #fcf0e3;
+    color: #b26200;
+}
+
+/* Parameter list */
+.agenttrust-params-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.agenttrust-params-list li {
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.agenttrust-param-type {
+    color: #787c82;
+    font-size: 12px;
+}
+
+.agenttrust-param-required {
+    color: #d63638;
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+/* Help section */
+.agenttrust-help-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ccd0d4;
+}
+
+.agenttrust-help-section h2 {
+    font-size: 1.3em;
+    margin-bottom: 8px;
+}
+
+.agenttrust-help-section ul {
+    list-style: disc;
+    padding-left: 20px;
+}
+
+.agenttrust-help-section li {
+    margin-bottom: 6px;
+}
+
+.agenttrust-help-section a {
+    text-decoration: none;
+}
+
+.agenttrust-help-section a:hover {
+    text-decoration: underline;
+}

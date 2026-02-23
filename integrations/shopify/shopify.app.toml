@@ -1,0 +1,9 @@
+name = "AgentTrust Gateway"
+client_id = "REPLACE_WITH_CLIENT_ID"
+application_url = "https://your-app.herokuapp.com"
+
+[auth]
+redirect_urls = ["https://your-app.herokuapp.com/auth/callback"]
+
+[webhooks]
+api_version = "2024-01"

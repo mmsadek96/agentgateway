@@ -1,0 +1,45 @@
+{
+  "id": "agenttrust",
+  "api": {
+    "config_vars_prefix": "AGENTTRUST",
+    "config_vars": [
+      "AGENTTRUST_STATION_URL",
+      "AGENTTRUST_API_KEY",
+      "AGENTTRUST_AGENT_ID"
+    ],
+    "password": "REPLACE_WITH_SECRET",
+    "sso_salt": "REPLACE_WITH_SSO_SALT",
+    "regions": ["us", "eu"],
+    "requires": [],
+    "production": {
+      "base_url": "https://addon.agenttrust.dev",
+      "sso_url": "https://addon.agenttrust.dev/heroku/sso"
+    }
+  },
+  "plans": [
+    {
+      "slug": "free",
+      "name": "Free",
+      "price": {
+        "cents": 0,
+        "unit": "month"
+      }
+    },
+    {
+      "slug": "starter",
+      "name": "Starter",
+      "price": {
+        "cents": 4900,
+        "unit": "month"
+      }
+    },
+    {
+      "slug": "pro",
+      "name": "Pro",
+      "price": {
+        "cents": 19900,
+        "unit": "month"
+      }
+    }
+  ]
+}
