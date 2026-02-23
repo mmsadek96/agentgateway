@@ -7,13 +7,13 @@
       "AGENTTRUST_API_KEY",
       "AGENTTRUST_AGENT_ID"
     ],
-    "password": "REPLACE_WITH_SECRET",
-    "sso_salt": "REPLACE_WITH_SSO_SALT",
+    "password": "afa879966438ce7623a803e20f60fa0228ba541f9ac2c223fd45c9b12ca9e77a",
+    "sso_salt": "8653191aac1fbd8689bcadf1f3d2be555092ba45674b045e6f239a3831818771",
     "regions": ["us", "eu"],
     "requires": [],
     "production": {
-      "base_url": "https://addon.agenttrust.dev",
-      "sso_url": "https://addon.agenttrust.dev/heroku/sso"
+      "base_url": "https://agenttrust-addon-b1510a9f2c47.herokuapp.com",
+      "sso_url": "https://agenttrust-addon-b1510a9f2c47.herokuapp.com/heroku/sso"
     }
   },
   "plans": [
