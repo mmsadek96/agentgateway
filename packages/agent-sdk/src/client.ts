@@ -13,6 +13,7 @@ import {
  * - Requesting clearance certificates from the station
  * - Discovering gateway capabilities
  * - Executing actions on gateways with automatic certificate management
+ * - Capturing Bot Shield access tokens for accessing protected website routes
  *
  * Usage:
  *   const agent = new AgentClient({
@@ -26,6 +27,9 @@ import {
  *     'search_products',
  *     { query: 'blue widgets' }
  *   );
+ *
+ *   // Use the access token to hit protected website routes
+ *   const page = await agent.fetchProtected('https://shop.example.com/api/products');
  */
 export class AgentClient {
   private stationUrl: string;
@@ -36,6 +40,9 @@ export class AgentClient {
   private currentCertificate: string | null = null;
   private certificateExpiry: number = 0;
   private currentScope: string[] | undefined;
+
+  // Bot Shield access token (captured from gateway responses)
+  private lastAccessToken: string | null = null;
 
   constructor(config: AgentClientConfig) {
     this.stationUrl = config.stationUrl.replace(/\/+$/, '');
@@ -159,6 +166,7 @@ export class AgentClient {
   /**
    * Execute an action on a gateway.
    * Automatically manages the certificate (requests/caches/refreshes).
+   * If the gateway returns a Bot Shield access token, it's captured automatically.
    *
    * @param gatewayUrl - Base URL of the gateway
    * @param actionName - Name of the action to execute
@@ -196,7 +204,19 @@ export class AgentClient {
         body: JSON.stringify({ params })
       });
 
-      return retryResponse.json() as Promise<ActionResponse>;
+      const retryResult = await retryResponse.json() as ActionResponse;
+
+      // Capture access token from retry response
+      if (retryResult.accessToken) {
+        this.lastAccessToken = retryResult.accessToken;
+      }
+
+      return retryResult;
+    }
+
+    // Capture Bot Shield access token if present
+    if (result.accessToken) {
+      this.lastAccessToken = result.accessToken;
     }
 
     return result;
@@ -227,6 +247,56 @@ export class AgentClient {
     }
 
     return results;
+  }
+
+  // ─── Bot Shield (Protected Website Access) ───
+
+  /**
+   * Get the last access token received from a gateway action.
+   * Returns null if no token has been received yet.
+   *
+   * Access tokens are short-lived (typically 45 seconds) and single-use.
+   * Execute another gateway action to get a new token.
+   */
+  getLastAccessToken(): string | null {
+    return this.lastAccessToken;
+  }
+
+  /**
+   * Make a request to a protected website route using the Bot Shield access token.
+   * The token is automatically included as the X-Gateway-Access-Token header.
+   *
+   * You must first execute a gateway action (via executeAction) to obtain a token.
+   *
+   * @param url - Full URL of the protected website route
+   * @param options - Standard fetch options (method, headers, body, etc.)
+   * @returns The fetch Response object
+   *
+   * @example
+   *   // Step 1: Execute an action to get a token
+   *   await agent.executeAction(gatewayUrl, 'search_products', { query: 'shoes' });
+   *
+   *   // Step 2: Access protected website routes with the token
+   *   const response = await agent.fetchProtected('https://shop.example.com/api/products');
+   *   const data = await response.json();
+   */
+  async fetchProtected(url: string, options?: RequestInit): Promise<Response> {
+    if (!this.lastAccessToken) {
+      throw new Error(
+        'No Bot Shield access token available. Execute a gateway action first to obtain one.'
+      );
+    }
+
+    const headers = new Headers(options?.headers);
+    headers.set('X-Gateway-Access-Token', this.lastAccessToken);
+
+    // Token is single-use — clear it after use
+    const token = this.lastAccessToken;
+    this.lastAccessToken = null;
+
+    headers.set('X-Gateway-Access-Token', token);
+
+    return fetch(url, { ...options, headers });
   }
 
   // ─── Scope Management ───

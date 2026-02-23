@@ -364,6 +364,20 @@ class AgentTrust_Gateway {
 
         $this->station_client->submit_report( $report );
 
+        // Issue Bot Shield access token on successful actions.
+        if ( $success ) {
+            $shield_secret = get_option( 'agenttrust_shield_secret', '' );
+            if ( ! empty( $shield_secret ) ) {
+                $shield       = new AgentTrust_Bot_Shield( $shield_secret, $this->gateway_id );
+                $agent_id_val = isset( $agent_context['sub'] ) ? $agent_context['sub'] : 'unknown';
+                $access_token = $shield->generate_access_token( $agent_id_val, $action_name );
+
+                if ( is_array( $result ) ) {
+                    $result['accessToken'] = $access_token;
+                }
+            }
+        }
+
         return $result;
     }
 

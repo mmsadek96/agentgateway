@@ -11,6 +11,8 @@ export { ActionRegistry } from './action-registry';
 export { BehaviorTracker } from './behavior-tracker';
 export { DerivativeMonitor } from './derivative-monitor';
 export { MLBehaviorAnalyzer, createMLAnalyzer } from './ml-analyzer';
+export { BotShield, createBotShield } from './bot-shield';
+export { generateAccessToken, verifyAccessToken } from './access-token';
 
 export type {
   GatewayConfig,
@@ -32,7 +34,11 @@ export type {
   DerivativeConfig,
   DerivativeResult,
   DerivativeState,
-  MetricSnapshot
+  MetricSnapshot,
+  // Bot Shield types
+  BotShieldConfig,
+  BotShieldGatewayConfig,
+  AccessTokenPayload
 } from './types';
 
 export type {

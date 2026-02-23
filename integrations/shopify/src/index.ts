@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import crypto from "crypto";
 import express, { Request, Response } from "express";
 import { createShopifyClient, ShopifyClient } from "./shopify";
 import { createShopifyActions } from "./gateway-actions";
@@ -9,6 +10,7 @@ import {
   handleOrderFulfilled,
   registerWebhooks,
 } from "./webhooks";
+import { generateAccessToken, createBotShield } from "@agent-trust/gateway";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -19,6 +21,9 @@ const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || "";
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || "";
 const SHOPIFY_SCOPES = process.env.SHOPIFY_SCOPES || "read_products,write_draft_orders,read_orders";
 const HOST = process.env.HOST || "localhost";
+
+// Bot Shield: shared secret for HMAC access tokens
+const SHIELD_SECRET = process.env.AGENTTRUST_SHIELD_SECRET || crypto.randomBytes(32).toString("hex");
 
 // ---------------------------------------------------------------------------
 // In-memory session store  (shop domain -> access token)
@@ -274,12 +279,34 @@ app.post("/agent-gateway", async (req: Request, res: Response) => {
     const requestActions = createShopifyActions(() => client);
     const result = await requestActions[action].handler(params || {});
 
-    res.json({ success: true, action, result, agent: verified.agentId });
+    // Issue Bot Shield access token for subsequent protected route access
+    const accessToken = generateAccessToken(
+      { secret: SHIELD_SECRET, ttlSeconds: 45 },
+      verified.agentId,
+      "shopify-gateway",
+      action
+    );
+    res.setHeader("X-Gateway-Access-Token", accessToken);
+
+    res.json({ success: true, action, result, agent: verified.agentId, accessToken });
   } catch (err: any) {
     console.error(`[Gateway] Action "${action}" failed:`, err);
     res.status(500).json({ error: err.message, action });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Bot Shield — block direct bot access to store routes
+// ---------------------------------------------------------------------------
+
+app.use(
+  createBotShield({
+    secret: SHIELD_SECRET,
+    allowBrowsers: true,
+    excludePaths: ["/health", "/auth", "/agent-gateway", "/webhooks"],
+    logger: (msg) => console.log(`[BotShield] ${msg}`),
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Webhook receivers

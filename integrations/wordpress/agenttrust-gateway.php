@@ -25,6 +25,7 @@ define( 'AGENTTRUST_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
  */
 require_once AGENTTRUST_PLUGIN_DIR . 'includes/class-station-client.php';
 require_once AGENTTRUST_PLUGIN_DIR . 'includes/class-gateway.php';
+require_once AGENTTRUST_PLUGIN_DIR . 'includes/class-bot-shield.php';
 require_once AGENTTRUST_PLUGIN_DIR . 'includes/class-admin-settings.php';
 require_once AGENTTRUST_PLUGIN_DIR . 'includes/class-rest-api.php';
 
@@ -38,6 +39,10 @@ function agenttrust_activate() {
     add_option( 'agenttrust_api_key', '' );
     add_option( 'agenttrust_gateway_id', wp_generate_uuid4() );
     add_option( 'agenttrust_min_score_default', 30 );
+
+    // Bot Shield: generate a shared secret for HMAC access tokens.
+    add_option( 'agenttrust_shield_enabled', false );
+    add_option( 'agenttrust_shield_secret', wp_generate_password( 64, false ) );
 }
 register_activation_hook( __FILE__, 'agenttrust_activate' );
 
@@ -76,6 +81,15 @@ function agenttrust_init() {
     // Register REST API endpoints.
     $rest_api = new AgentTrust_REST_API( $gateway );
     add_action( 'rest_api_init', array( $rest_api, 'register_routes' ) );
+
+    // Register Bot Shield if enabled.
+    $shield_enabled = get_option( 'agenttrust_shield_enabled', false );
+    $shield_secret  = get_option( 'agenttrust_shield_secret', '' );
+
+    if ( $shield_enabled && ! empty( $shield_secret ) ) {
+        $bot_shield = new AgentTrust_Bot_Shield( $shield_secret, $gateway_id );
+        $bot_shield->register_hooks();
+    }
 }
 add_action( 'plugins_loaded', 'agenttrust_init' );
 

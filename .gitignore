@@ -5,6 +5,7 @@ dist/
 .DS_Store
 nul
 .claude/
+.reference/
 
 # Packages build output
 packages/*/dist/
@@ -19,3 +20,6 @@ launch/
 
 # Heroku addon manifest (contains secrets)
 integrations/heroku-addon/addon-manifest.json
+
+# Build artifacts
+*.zip

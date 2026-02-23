@@ -4,3 +4,4 @@ artifacts/
 typechain-types/
 .env
 deployment.json
+deployment-defi.json

@@ -44,6 +44,8 @@ export interface ActionResponse {
   success: boolean;
   data?: unknown;
   error?: string;
+  /** Bot Shield access token for subsequent requests to protected website routes */
+  accessToken?: string;
 }
 
 // ─── Station Info ───

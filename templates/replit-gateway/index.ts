@@ -62,6 +62,13 @@ const gateway = createGateway({
   stationUrl: STATION_URL,
   stationApiKey: STATION_API_KEY,
   gatewayId: 'replit-demo-gateway',
+
+  // ─── Bot Shield ───
+  // When enabled, the gateway issues short-lived HMAC access tokens after
+  // each successful action. Agents must include this token as an
+  // X-Gateway-Access-Token header when hitting your website's protected routes.
+  botShield: { enabled: true },
+
   actions: {
     search_items: {
       description: 'Search the product catalog by keyword or category',
@@ -234,10 +241,27 @@ app.get('/', (_req, res) => {
       add_to_cart: { minScore: 50, description: 'Add a product to the cart' },
       checkout: { minScore: 70, description: 'Place an order' },
     },
+    botShield: {
+      enabled: true,
+      description: 'Protected routes require X-Gateway-Access-Token header from agents',
+      tokenHeader: 'X-Gateway-Access-Token',
+      tokenLifetime: '45 seconds',
+    },
   });
 });
 
 app.use('/agent-gateway', gateway.router());
+
+// ─── Bot Shield Middleware ───
+// Protect your website routes from direct bot access.
+// Only browser users and agents with a valid gateway access token can get through.
+// The gateway auto-generates a shared secret and this middleware uses it.
+
+app.use(gateway.shieldMiddleware({
+  allowBrowsers: true,
+  excludePaths: ['/', '/agent-gateway'],  // Exclude root info and gateway itself
+  logger: (msg) => console.log(`[BotShield] ${msg}`)
+}));
 
 // ─── Start Server ───
 

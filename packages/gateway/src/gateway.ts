@@ -1,13 +1,17 @@
-import { Router } from 'express';
+import { Router, RequestHandler } from 'express';
+import { randomBytes } from 'crypto';
 import { StationClient } from './station-client';
 import { ActionRegistry } from './action-registry';
 import { BehaviorTracker } from './behavior-tracker';
 import { MLBehaviorAnalyzer } from './ml-analyzer';
 import { createCertificateMiddleware } from './middleware/certificate';
+import { generateAccessToken } from './access-token';
+import { BotShield } from './bot-shield';
 import {
   GatewayConfig,
   GatewayRequest,
   AgentContext,
+  BotShieldConfig,
   DiscoveryPayload
 } from './types';
 
@@ -27,6 +31,11 @@ export class AgentGateway {
   private mlAnalyzer: MLBehaviorAnalyzer;
   private config: GatewayConfig;
 
+  // Bot Shield state
+  private shieldEnabled: boolean;
+  private shieldSecret: string;
+  private shieldTtlSeconds: number;
+
   constructor(config: GatewayConfig) {
     this.config = config;
     this.stationClient = new StationClient(
@@ -37,6 +46,15 @@ export class AgentGateway {
     this.actionRegistry = new ActionRegistry(config.actions);
     this.behaviorTracker = new BehaviorTracker(config.behavior ?? {});
     this.mlAnalyzer = new MLBehaviorAnalyzer(config.ml ?? {});
+
+    // Bot Shield setup
+    this.shieldEnabled = config.botShield?.enabled ?? false;
+    this.shieldSecret = config.botShield?.secret || randomBytes(32).toString('hex');
+    this.shieldTtlSeconds = config.botShield?.tokenTtlSeconds ?? 45;
+
+    if (this.shieldEnabled) {
+      console.log(`[@agent-trust/gateway] Bot Shield enabled (token TTL: ${this.shieldTtlSeconds}s)`);
+    }
 
     // Initialize ML models in the background (non-blocking)
     this.mlAnalyzer.initialize().catch(() => {
@@ -73,17 +91,29 @@ export class AgentGateway {
      * Agents call this to discover what this gateway offers.
      */
     router.get('/.well-known/agent-gateway', (_req, res) => {
-      const payload = {
+      const payload: Record<string, unknown> = {
         gatewayId: this.config.gatewayId,
         actions: this.actionRegistry.getDiscoveryPayload(),
         certificateIssuer: 'agent-trust-station',
-        version: '1.2.0',
+        version: '1.3.0',
         security: {
           behavioralTracking: true,
           mlAnalysis: this.mlAnalyzer.isAvailable(),
-          scopeEnforcement: true
+          scopeEnforcement: true,
+          botShield: this.shieldEnabled
         }
       };
+
+      // Advertise Bot Shield so agents know to use the access token
+      if (this.shieldEnabled) {
+        payload.botShield = {
+          enabled: true,
+          tokenHeader: 'X-Gateway-Access-Token',
+          tokenLifetime: this.shieldTtlSeconds,
+          description: 'After executing an action, use the returned accessToken to access protected website routes'
+        };
+      }
+
       res.json(payload);
     });
 
@@ -357,6 +387,18 @@ export class AgentGateway {
         return;
       }
 
+      // ─── Bot Shield: Issue access token on success ───
+      if (result.success && this.shieldEnabled) {
+        const accessToken = generateAccessToken(
+          { secret: this.shieldSecret, ttlSeconds: this.shieldTtlSeconds },
+          certificate.sub,
+          this.config.gatewayId,
+          actionName
+        );
+        response.accessToken = accessToken;
+        res.setHeader('X-Gateway-Access-Token', accessToken);
+      }
+
       if (result.success) {
         res.json(response);
       } else {
@@ -365,6 +407,48 @@ export class AgentGateway {
     });
 
     return router;
+  }
+
+  // ─── Bot Shield ───
+
+  /**
+   * Create a BotShield middleware pre-configured with this gateway's secret.
+   * Mount on your website routes to block direct bot access.
+   *
+   * Usage:
+   *   const gateway = createGateway({ ..., botShield: { enabled: true } });
+   *   app.use('/agent-gateway', gateway.router());
+   *   app.use(gateway.shieldMiddleware({ excludePaths: ['/health'] }));
+   */
+  shieldMiddleware(overrides?: Partial<BotShieldConfig>): RequestHandler {
+    if (!this.shieldEnabled) {
+      throw new Error(
+        'Bot Shield is not enabled on this gateway. Set botShield: { enabled: true } in GatewayConfig.'
+      );
+    }
+
+    const shield = new BotShield({
+      secret: this.shieldSecret,
+      gatewayId: this.config.gatewayId,
+      ...overrides
+    });
+
+    return shield.middleware();
+  }
+
+  /**
+   * Get the shield secret for advanced use cases (e.g., different-process deployments).
+   * Returns null if Bot Shield is not enabled.
+   */
+  getShieldSecret(): string | null {
+    return this.shieldEnabled ? this.shieldSecret : null;
+  }
+
+  /**
+   * Check if Bot Shield is enabled on this gateway.
+   */
+  isShieldEnabled(): boolean {
+    return this.shieldEnabled;
   }
 
   /**

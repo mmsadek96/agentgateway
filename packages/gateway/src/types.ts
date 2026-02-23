@@ -1,5 +1,9 @@
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import type { MLAnalyzerConfig } from './ml-analyzer';
+import type { AccessTokenPayload } from './access-token';
+
+// Re-export for consumers
+export type { AccessTokenPayload } from './access-token';
 
 // ─── Gateway Configuration ───
 
@@ -24,6 +28,56 @@ export interface GatewayConfig {
 
   /** ML-based threat detection configuration (optional — auto-enabled if @huggingface/transformers is installed) */
   ml?: MLAnalyzerConfig;
+
+  /** Bot Shield configuration — enables access token issuance after successful actions */
+  botShield?: BotShieldGatewayConfig;
+}
+
+// ─── Bot Shield Configuration ───
+
+/** Gateway-side Bot Shield config (controls token issuance) */
+export interface BotShieldGatewayConfig {
+  /** Enable Bot Shield token issuance (default: false) */
+  enabled?: boolean;
+
+  /** Shared secret for HMAC-SHA256 signing. Auto-generated if omitted (good for same-process). */
+  secret?: string;
+
+  /** Token TTL in seconds (default: 45) */
+  tokenTtlSeconds?: number;
+}
+
+/** Website-side Bot Shield config (controls request filtering) */
+export interface BotShieldConfig {
+  /** Shared secret for HMAC-SHA256 verification — must match the gateway's shield secret */
+  secret: string;
+
+  /** Gateway ID to accept tokens from. If set, rejects tokens from other gateways. */
+  gatewayId?: string;
+
+  /** Max seconds to accept a token (default: 60). Tokens older than this are rejected even if not expired. */
+  maxTokenAge?: number;
+
+  /** Allow browser users through without a token (default: true) */
+  allowBrowsers?: boolean;
+
+  /** Custom browser detection function. Default uses User-Agent heuristics. */
+  isBrowser?: (req: Request) => boolean;
+
+  /** Paths to exclude from Bot Shield protection (e.g., ['/health', '/api/public']) */
+  excludePaths?: string[];
+
+  /** Prevent token replay via nonce tracking (default: true) */
+  enforceNonce?: boolean;
+
+  /** Maximum nonce cache size before oldest nonces are evicted (default: 10000) */
+  maxNonceCache?: number;
+
+  /** Custom handler for blocked requests. Default sends a JSON 403 response. */
+  onBlocked?: (req: Request, res: Response, reason: string) => void;
+
+  /** Log function for debugging (default: no logging) */
+  logger?: (message: string) => void;
 }
 
 // ─── Behavioral Tracking Configuration ───
@@ -177,6 +231,8 @@ export interface GatewayRequest extends Request {
   behaviorScore?: number;
   /** Behavioral flags detected in this session */
   behaviorFlags?: BehaviorFlag[];
+  /** Bot Shield decoded token payload (set by BotShield middleware on protected routes) */
+  botShieldToken?: AccessTokenPayload;
 }
 
 // ─── Behavioral Tracking Types ───
