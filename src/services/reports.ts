@@ -13,6 +13,7 @@ interface ReportResult {
 /**
  * Process a behavior report from a gateway.
  * Creates action records, updates agent stats, and recalculates reputation.
+ * Uses a transaction to ensure atomicity — all or nothing.
  */
 export async function submitReport(report: GatewayReportRequest & { developerId?: string }): Promise<ReportResult> {
   const { agentId, gatewayId, actions, certificateJti, developerId } = report;
@@ -49,59 +50,76 @@ export async function submitReport(report: GatewayReportRequest & { developerId?
     throw new Error('Certificate does not belong to this agent');
   }
 
-  // Process each action
+  // Idempotency check — prevent duplicate reports for same certificate + gateway
+  const existingReport = await prisma.gatewayReport.findFirst({
+    where: { certificateJti, gatewayId }
+  });
+
+  if (existingReport) {
+    throw new Error('Report already submitted for this certificate and gateway');
+  }
+
+  // Process all actions atomically in a transaction
   let successCount = 0;
   let failureCount = 0;
 
   for (const action of actions) {
-    // Create the action record
-    await prisma.action.create({
-      data: {
-        agentId,
-        actionType: action.actionType,
-        decision: 'allowed', // It was allowed by the gateway
-        reason: `Gateway ${gatewayId} reported ${action.outcome}`,
-        metadata: (action.metadata || {}) as any
-      }
-    });
-
-    // Update agent stats
     if (action.outcome === 'success') {
       successCount++;
-      await prisma.agent.update({
-        where: { id: agentId },
-        data: {
-          totalActions: { increment: 1 },
-          successfulActions: { increment: 1 }
-        }
-      });
-      await recordReputationEvent(agentId, 'success', 0);
     } else {
       failureCount++;
-      await prisma.agent.update({
-        where: { id: agentId },
-        data: {
-          totalActions: { increment: 1 },
-          failedActions: { increment: 1 }
-        }
-      });
-      await recordReputationEvent(agentId, 'failure', -5);
     }
   }
 
-  // Save the gateway report summary
-  await prisma.gatewayReport.create({
-    data: {
-      agentId,
-      gatewayId,
-      certificateJti,
-      actionsCount: actions.length,
-      successCount,
-      failureCount
+  await prisma.$transaction(async (tx) => {
+    // Create all action records
+    for (const action of actions) {
+      await tx.action.create({
+        data: {
+          agentId,
+          actionType: action.actionType,
+          decision: 'allowed',
+          reason: `Gateway ${gatewayId} reported ${action.outcome}`,
+          metadata: (action.metadata || {}) as any
+        }
+      });
     }
+
+    // Update agent stats in a single atomic operation
+    await tx.agent.update({
+      where: { id: agentId },
+      data: {
+        totalActions: { increment: actions.length },
+        successfulActions: { increment: successCount },
+        failedActions: { increment: failureCount }
+      }
+    });
+
+    // Create reputation events
+    for (const action of actions) {
+      await tx.reputationEvent.create({
+        data: {
+          agentId,
+          eventType: action.outcome === 'success' ? 'success' : 'failure',
+          scoreChange: action.outcome === 'success' ? 2 : -5
+        }
+      });
+    }
+
+    // Save the gateway report summary
+    await tx.gatewayReport.create({
+      data: {
+        agentId,
+        gatewayId,
+        certificateJti,
+        actionsCount: actions.length,
+        successCount,
+        failureCount
+      }
+    });
   });
 
-  // Recalculate reputation
+  // Recalculate reputation (outside transaction — includes blockchain sync)
   const newScore = await updateAgentReputation(agentId);
 
   return {

@@ -1,6 +1,8 @@
 import { ethers, Contract, Wallet, JsonRpcProvider } from 'ethers';
 import { uuidToBytes32, isBlockchainEnabled } from './blockchain';
 
+const BASE_RPC_URL = process.env.BASE_RPC_URL || 'https://mainnet.base.org';
+
 // ─── DeFi Contract Addresses (Base Mainnet) ───
 const TRUST_TOKEN_ADDRESS = '0x70A9fc13bA469b8D0CD0d50c1137c26327CAB0F2';
 const STAKING_VAULT_ADDRESS = '0x055a8441F18B07Ae0F4967A2d114dB1D7059FdD0';
@@ -92,7 +94,7 @@ export function initDefiContracts(): boolean {
   }
 
   try {
-    provider = new JsonRpcProvider('https://mainnet.base.org');
+    provider = new JsonRpcProvider(BASE_RPC_URL);
     wallet = new Wallet(privateKey, provider);
     trustToken = new Contract(TRUST_TOKEN_ADDRESS, TRUST_TOKEN_ABI, wallet);
     stakingVault = new Contract(STAKING_VAULT_ADDRESS, STAKING_VAULT_ABI, wallet);

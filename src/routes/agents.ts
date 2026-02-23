@@ -56,7 +56,7 @@ router.post('/:agentId/stake', authenticateApiKey, async (req: AuthenticatedRequ
     const { agentId } = req.params;
     const { amount } = req.body;
 
-    if (typeof amount !== 'number' || amount <= 0) {
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
       res.status(400).json({ success: false, error: 'Valid positive amount required' });
       return;
     }
@@ -80,7 +80,7 @@ router.post('/:agentId/stake/withdraw', authenticateApiKey, async (req: Authenti
     const { agentId } = req.params;
     const { amount } = req.body;
 
-    if (typeof amount !== 'number' || amount <= 0) {
+    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
       res.status(400).json({ success: false, error: 'Valid positive amount required' });
       return;
     }

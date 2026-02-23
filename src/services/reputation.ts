@@ -152,34 +152,40 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
 }
 
 export async function updateAgentReputation(agentId: string): Promise<number> {
-  const agent = await prisma.agent.findUnique({ where: { id: agentId } });
-  const oldScore = agent?.reputationScore ?? 50;
+  // Use serializable transaction to prevent race conditions on concurrent updates
+  const result = await prisma.$transaction(async (tx) => {
+    const agent = await tx.agent.findUnique({ where: { id: agentId } });
+    if (!agent) throw new Error('Agent not found');
 
-  const factors = await calculateReputationScore(agentId);
+    const oldScore = agent.reputationScore;
+    const factors = await calculateReputationScore(agentId);
 
-  await prisma.agent.update({
-    where: { id: agentId },
-    data: { reputationScore: factors.totalScore }
+    await tx.agent.update({
+      where: { id: agentId },
+      data: { reputationScore: factors.totalScore }
+    });
+
+    return { agent, oldScore, factors };
   });
 
-  // Sync to blockchain (non-blocking)
-  if (agent) {
-    const successRate = agent.totalActions > 0
-      ? agent.successfulActions / agent.totalActions
-      : 1;
-    updateReputationOnChain(agentId, factors.totalScore, agent.totalActions, successRate)
-      .catch((err) => console.error('[Blockchain] Failed to sync reputation on-chain:', err.message));
+  const { agent, oldScore, factors } = result;
 
-    // Log the score change event on-chain (includes momentum metadata)
-    const eventType = factors.totalScore < oldScore ? 1 : 2; // 1=slash, 2=reward
-    const momentumTag = factors.momentumAdjustment !== 0
-      ? `:momentum=${factors.momentumAdjustment > 0 ? '+' : ''}${factors.momentumAdjustment}`
-      : '';
-    logReputationEventOnChain(
-      agentId, eventType, oldScore, factors.totalScore,
-      `score_update:${agent.totalActions}actions${momentumTag}`
-    ).catch((err) => console.error('[Blockchain] Failed to log reputation event on-chain:', err.message));
-  }
+  // Sync to blockchain (non-blocking, outside transaction)
+  const successRate = agent.totalActions > 0
+    ? agent.successfulActions / agent.totalActions
+    : 1;
+  updateReputationOnChain(agentId, factors.totalScore, agent.totalActions, successRate)
+    .catch((err) => console.error('[Blockchain] Failed to sync reputation on-chain:', err.message));
+
+  // Log the score change event on-chain (includes momentum metadata)
+  const eventType = factors.totalScore < oldScore ? 1 : 2; // 1=slash, 2=reward
+  const momentumTag = factors.momentumAdjustment !== 0
+    ? `:momentum=${factors.momentumAdjustment > 0 ? '+' : ''}${factors.momentumAdjustment}`
+    : '';
+  logReputationEventOnChain(
+    agentId, eventType, oldScore, factors.totalScore,
+    `score_update:${agent.totalActions}actions${momentumTag}`
+  ).catch((err) => console.error('[Blockchain] Failed to log reputation event on-chain:', err.message));
 
   return factors.totalScore;
 }

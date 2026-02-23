@@ -45,6 +45,9 @@ const STATUS_MAP: Record<string, number> = {
   banned: 3,
 };
 
+// ─── RPC Configuration ───
+const BASE_RPC_URL = process.env.BASE_RPC_URL || 'https://mainnet.base.org';
+
 // ─── Singleton Instances ───
 let provider: JsonRpcProvider | null = null;
 let wallet: Wallet | null = null;
@@ -65,7 +68,7 @@ export function initBlockchain(): boolean {
   }
 
   try {
-    provider = new JsonRpcProvider('https://mainnet.base.org');
+    provider = new JsonRpcProvider(BASE_RPC_URL);
     wallet = new Wallet(privateKey, provider);
     agentRegistry = new Contract(AGENT_REGISTRY_ADDRESS, AGENT_REGISTRY_ABI, wallet);
     certificateRegistry = new Contract(CERTIFICATE_REGISTRY_ADDRESS, CERTIFICATE_REGISTRY_ABI, wallet);
@@ -281,7 +284,7 @@ export async function verifyCertificateOnChain(
   if (!provider) {
     // Try to create a read-only provider even if wallet isn't set
     try {
-      const readProvider = new JsonRpcProvider('https://mainnet.base.org');
+      const readProvider = new JsonRpcProvider(BASE_RPC_URL);
       const readContract = new Contract(CERTIFICATE_REGISTRY_ADDRESS, CERTIFICATE_REGISTRY_ABI, readProvider);
       const certId = uuidToBytes32(certJti);
       const result = await readContract.verifyCertificate(certId);

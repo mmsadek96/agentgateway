@@ -9,13 +9,19 @@ interface StakeResult {
   newReputationScore: number;
 }
 
+const MAX_STAKE_AMOUNT = 1_000_000; // Max $1M stake per operation
+const MAX_TOTAL_STAKE = 10_000_000; // Max $10M total stake per agent
+
 export async function addStake(
   agentExternalId: string,
   developerId: string,
   amount: number
 ): Promise<StakeResult> {
-  if (amount <= 0) {
-    throw new Error('Stake amount must be positive');
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Stake amount must be a positive number');
+  }
+  if (amount > MAX_STAKE_AMOUNT) {
+    throw new Error(`Stake amount cannot exceed ${MAX_STAKE_AMOUNT}`);
   }
 
   const agent = await prisma.agent.findUnique({
@@ -28,6 +34,10 @@ export async function addStake(
 
   const previousStake = Number(agent.stakeAmount);
   const newStake = previousStake + amount;
+
+  if (newStake > MAX_TOTAL_STAKE) {
+    throw new Error(`Total stake cannot exceed ${MAX_TOTAL_STAKE}`);
+  }
 
   // Update stake amount
   await prisma.agent.update({
@@ -56,8 +66,8 @@ export async function withdrawStake(
   developerId: string,
   amount: number
 ): Promise<StakeResult> {
-  if (amount <= 0) {
-    throw new Error('Withdrawal amount must be positive');
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Withdrawal amount must be a positive number');
   }
 
   const agent = await prisma.agent.findUnique({
