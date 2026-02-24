@@ -7,6 +7,56 @@ import {
 } from './types';
 
 /**
+ * Validate that a URL is safe to send credentials to (#21).
+ * - Must be HTTPS (or localhost for development)
+ * - Must not target private/internal IPs (SSRF prevention)
+ */
+function validateUrl(urlStr: string, label: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlStr);
+  } catch {
+    throw new Error(`Invalid ${label} URL: ${urlStr}`);
+  }
+
+  // Require HTTPS in production (allow http only for localhost dev)
+  const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+  if (parsed.protocol !== 'https:' && !isLocalhost) {
+    throw new Error(`${label} URL must use HTTPS: ${urlStr}`);
+  }
+
+  // Block private/internal IPs to prevent SSRF (#21)
+  const hostname = parsed.hostname;
+  if (!isLocalhost) {
+    // Block private IPv4 ranges
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.)/.test(hostname)) {
+      throw new Error(`${label} URL targets a private IP address: ${hostname}`);
+    }
+    // Block private IPv6
+    if (/^(fc|fd|fe80)/i.test(hostname)) {
+      throw new Error(`${label} URL targets a private IPv6 address: ${hostname}`);
+    }
+    // Block cloud metadata endpoints
+    if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') {
+      throw new Error(`${label} URL targets a cloud metadata endpoint: ${hostname}`);
+    }
+  }
+
+  return parsed;
+}
+
+/**
+ * Extract the origin (protocol + host) from a URL string.
+ */
+function getOrigin(urlStr: string): string {
+  try {
+    return new URL(urlStr).origin;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * AgentClient — the main class agents use to interact with the trust system.
  *
  * Handles:
@@ -43,8 +93,12 @@ export class AgentClient {
 
   // Bot Shield access token (captured from gateway responses)
   private lastAccessToken: string | null = null;
+  // Track which gateway origin issued the token (#23)
+  private lastTokenOrigin: string | null = null;
 
   constructor(config: AgentClientConfig) {
+    // Validate station URL at construction time (#21)
+    validateUrl(config.stationUrl, 'Station');
     this.stationUrl = config.stationUrl.replace(/\/+$/, '');
     this.apiKey = config.apiKey;
     this.agentId = config.agentId;
@@ -153,6 +207,8 @@ export class AgentClient {
    * @param gatewayUrl - Base URL of the gateway (e.g., "https://shop.example.com/agent-gateway")
    */
   async discoverGateway(gatewayUrl: string): Promise<GatewayDiscovery> {
+    // Validate gateway URL (#21, #22)
+    validateUrl(gatewayUrl, 'Gateway');
     const url = gatewayUrl.replace(/\/+$/, '');
     const response = await fetch(`${url}/.well-known/agent-gateway`);
 
@@ -168,7 +224,7 @@ export class AgentClient {
    * Automatically manages the certificate (requests/caches/refreshes).
    * If the gateway returns a Bot Shield access token, it's captured automatically.
    *
-   * @param gatewayUrl - Base URL of the gateway
+   * @param gatewayUrl - Base URL of the gateway (must be HTTPS, no private IPs)
    * @param actionName - Name of the action to execute
    * @param params - Parameters for the action
    */
@@ -177,6 +233,8 @@ export class AgentClient {
     actionName: string,
     params: Record<string, unknown> = {}
   ): Promise<ActionResponse> {
+    // Validate gateway URL (#21, #22) — blocks SSRF and cert replay to arbitrary endpoints
+    validateUrl(gatewayUrl, 'Gateway');
     const url = gatewayUrl.replace(/\/+$/, '');
     const certificate = await this.getCertificate();
 
@@ -209,6 +267,7 @@ export class AgentClient {
       // Capture access token from retry response
       if (retryResult.accessToken) {
         this.lastAccessToken = retryResult.accessToken;
+        this.lastTokenOrigin = getOrigin(gatewayUrl); // Track issuing gateway (#23)
       }
 
       return retryResult;
@@ -217,6 +276,7 @@ export class AgentClient {
     // Capture Bot Shield access token if present
     if (result.accessToken) {
       this.lastAccessToken = result.accessToken;
+      this.lastTokenOrigin = getOrigin(gatewayUrl); // Track issuing gateway (#23)
     }
 
     return result;
@@ -266,9 +326,12 @@ export class AgentClient {
    * Make a request to a protected website route using the Bot Shield access token.
    * The token is automatically included as the X-Gateway-Access-Token header.
    *
+   * SECURITY: The target URL must share the same origin as the gateway that issued
+   * the token (#23). This prevents token leakage to arbitrary domains.
+   *
    * You must first execute a gateway action (via executeAction) to obtain a token.
    *
-   * @param url - Full URL of the protected website route
+   * @param url - Full URL of the protected website route (must be same origin as gateway)
    * @param options - Standard fetch options (method, headers, body, etc.)
    * @returns The fetch Response object
    *
@@ -287,13 +350,25 @@ export class AgentClient {
       );
     }
 
-    const headers = new Headers(options?.headers);
-    headers.set('X-Gateway-Access-Token', this.lastAccessToken);
+    // Validate target URL (#21)
+    validateUrl(url, 'Protected route');
+
+    // SECURITY: Restrict token to same origin as the issuing gateway (#23).
+    // This prevents the access token from being leaked to arbitrary domains.
+    const targetOrigin = getOrigin(url);
+    if (this.lastTokenOrigin && targetOrigin !== this.lastTokenOrigin) {
+      throw new Error(
+        `fetchProtected URL origin (${targetOrigin}) does not match the gateway that issued the token (${this.lastTokenOrigin}). ` +
+        'Access tokens can only be used on the same origin as the issuing gateway.'
+      );
+    }
 
     // Token is single-use — clear it after use
     const token = this.lastAccessToken;
     this.lastAccessToken = null;
+    this.lastTokenOrigin = null;
 
+    const headers = new Headers(options?.headers);
     headers.set('X-Gateway-Access-Token', token);
 
     return fetch(url, { ...options, headers });

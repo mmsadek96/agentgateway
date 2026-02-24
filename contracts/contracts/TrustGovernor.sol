@@ -178,5 +178,11 @@ contract TrustGovernor is
 
     // ─── UUPS ───
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    /**
+     * @notice Authorize a UUPS upgrade. Restricted to the timelock (governance executor).
+     * Using `onlyGovernance` (which checks `msg.sender == _executor()`, i.e. the timelock)
+     * ensures that upgrades must go through a full governance proposal + timelock delay.
+     * This prevents the deployer from bypassing governance by retaining owner privileges (#24).
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
 }

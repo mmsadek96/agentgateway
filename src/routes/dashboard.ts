@@ -98,7 +98,15 @@ router.get('/api/overview', dashboardAuth, async (_req: Request, res: Response) 
 router.get('/api/agents', dashboardAuth, async (req: Request, res: Response) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-    const sortBy = (req.query.sort as string) || 'reputationScore';
+
+    // Whitelist allowed sort columns to prevent prototype pollution and
+    // ordering by sensitive columns (#15)
+    const ALLOWED_SORT_COLUMNS = new Set([
+      'reputationScore', 'totalActions', 'successfulActions', 'failedActions',
+      'stakeAmount', 'createdAt', 'externalId', 'status'
+    ]);
+    const sortInput = (req.query.sort as string) || 'reputationScore';
+    const sortBy = ALLOWED_SORT_COLUMNS.has(sortInput) ? sortInput : 'reputationScore';
     const order = (req.query.order as string) === 'asc' ? 'asc' : 'desc';
 
     const agents = await prisma.agent.findMany({

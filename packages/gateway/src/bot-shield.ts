@@ -32,7 +32,7 @@ export class BotShield {
 
     this.config = {
       maxTokenAge: 60,
-      allowBrowsers: true,
+      allowBrowsers: false, // Default to false — browser detection is spoofable (#19)
       enforceNonce: true,
       maxNonceCache: 10_000,
       ...config
@@ -108,13 +108,18 @@ export class BotShield {
           return;
         }
 
+        // Clean expired nonces first to make room (safe — expired nonces can't be replayed)
+        this.cleanExpiredNonces();
+
+        // Only track if under capacity. If cache is full of UNEXPIRED nonces,
+        // reject rather than evict (evicting unexpired nonces opens replay window) (#17)
+        if (this.usedNonces.size >= this.config.maxNonceCache) {
+          this.blockRequest(req, res, 'Nonce cache full — try again shortly');
+          return;
+        }
+
         // Track this nonce
         this.usedNonces.set(payload.nonce, payload.exp);
-
-        // Evict oldest nonces if cache is full
-        if (this.usedNonces.size > this.config.maxNonceCache) {
-          this.evictOldestNonces();
-        }
       }
 
       // ─── 8. Token is valid — allow through ───
@@ -152,14 +157,19 @@ export class BotShield {
   /**
    * Check if the request path is excluded from shield protection.
    */
-  private isExcludedPath(path: string): boolean {
+  private isExcludedPath(requestPath: string): boolean {
     if (!this.config.excludePaths || this.config.excludePaths.length === 0) {
       return false;
     }
 
+    // Normalize path to prevent traversal bypass (#45):
+    // e.g., "/health/../admin" → "/admin" (not excluded)
+    const { posix } = require('path');
+    const normalized = posix.normalize(requestPath);
+
     return this.config.excludePaths.some(excluded => {
       // Exact match or prefix match with /
-      return path === excluded || path.startsWith(excluded + '/');
+      return normalized === excluded || normalized.startsWith(excluded + '/');
     });
   }
 
@@ -182,19 +192,8 @@ export class BotShield {
     }
   }
 
-  /**
-   * Evict the oldest nonces when cache is full.
-   * Removes the oldest 10% of entries.
-   */
-  private evictOldestNonces(): void {
-    const toEvict = Math.ceil(this.config.maxNonceCache * 0.1);
-    const entries = Array.from(this.usedNonces.entries())
-      .sort((a, b) => a[1] - b[1]); // Sort by expiry (oldest first)
-
-    for (let i = 0; i < Math.min(toEvict, entries.length); i++) {
-      this.usedNonces.delete(entries[i][0]);
-    }
-  }
+  // evictOldestNonces removed (#17): Evicting unexpired nonces opens a replay window.
+  // Instead, we clean only expired nonces and reject if still full.
 
   /**
    * Clear the nonce cache (for testing or memory management).
@@ -223,10 +222,14 @@ export class BotShield {
 
 /**
  * Heuristic-based browser detection.
- * Requires at least 2 of 4 "browser signals" to classify as a browser.
+ * Requires at least 3 of 4 "browser signals" to classify as a browser (#19).
  *
- * This is intentionally a heuristic — the goal is to block unsophisticated bots
- * (AI agents, scrapers, curl) while allowing real browsers through.
+ * WARNING: All these signals are spoofable HTTP headers. This heuristic blocks
+ * unsophisticated bots (curl, basic scrapers) but a determined attacker can
+ * trivially spoof all 4 signals. For high-security use cases, either:
+ * - Set `allowBrowsers: false` (default) and require all clients to use gateway tokens
+ * - Provide a custom `isBrowser` function that uses JS challenges or fingerprinting
+ *
  * The `isBrowser` config option allows overriding this for stricter checks.
  */
 function defaultIsBrowser(req: Request): boolean {
@@ -255,7 +258,8 @@ function defaultIsBrowser(req: Request): boolean {
     signals++;
   }
 
-  return signals >= 2;
+  // Require 3 of 4 signals (raised from 2 to reduce spoofability)
+  return signals >= 3;
 }
 
 // ─── Factory Function ───

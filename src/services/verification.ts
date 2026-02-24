@@ -118,10 +118,23 @@ export async function verifyAgent(options: VerificationOptions): Promise<Verific
   };
 }
 
+/**
+ * Report action outcome.
+ *
+ * Security considerations:
+ * - Self-reported outcomes are weighted lower than gateway-reported outcomes.
+ *   Developers reporting their own agents' outcomes get half the score impact.
+ * - An action can only have its outcome reported once (idempotency).
+ * - Per-agent daily report caps prevent farming: max 50 self-reports per agent per day.
+ *
+ * @param isGatewayReport If true, the report came from a gateway (trusted). Self-reports
+ *                        from developers get reduced weight.
+ */
 export async function reportOutcome(
   actionId: string,
   developerId: string,
-  outcome: 'success' | 'failure'
+  outcome: 'success' | 'failure',
+  isGatewayReport = false
 ): Promise<{ updated: boolean; newScore: number }> {
   // Find the action and verify it belongs to this developer's agent
   const action = await prisma.action.findUnique({
@@ -139,20 +152,61 @@ export async function reportOutcome(
     throw new Error('Action does not belong to your agent');
   }
 
+  // Prevent duplicate outcome reporting — each action can only be reported once.
+  // We track this via the metadata JSON field to avoid needing a schema migration.
+  const metadata = (action.metadata && typeof action.metadata === 'object') ? action.metadata as Record<string, unknown> : {};
+  if (metadata.outcomeReported) {
+    throw new Error('Outcome already reported for this action');
+  }
+
+  // Per-agent daily self-report cap (prevents farming via mass self-reporting)
+  if (!isGatewayReport) {
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentSelfReports = await prisma.reputationEvent.count({
+      where: {
+        agentId: action.agentId,
+        createdAt: { gte: dayAgo },
+        eventType: { in: ['success', 'failure'] }
+      }
+    });
+
+    if (recentSelfReports >= 50) {
+      throw new Error('Daily self-report limit reached (50). Use gateway-reported outcomes for higher throughput.');
+    }
+  }
+
+  // Self-reports get half the score impact to mitigate gaming.
+  // Gateway-reported outcomes (isGatewayReport=true) get full impact.
+  const successWeight = isGatewayReport ? 2 : 1;
+  const failureWeight = isGatewayReport ? -5 : -3;
+
   // Update agent stats based on outcome
   if (outcome === 'success') {
     await prisma.agent.update({
       where: { id: action.agentId },
       data: { successfulActions: { increment: 1 } }
     });
-    await recordReputationEvent(action.agentId, 'success', 2);
+    await recordReputationEvent(action.agentId, 'success', successWeight);
   } else {
     await prisma.agent.update({
       where: { id: action.agentId },
       data: { failedActions: { increment: 1 } }
     });
-    await recordReputationEvent(action.agentId, 'failure', -5);
+    await recordReputationEvent(action.agentId, 'failure', failureWeight);
   }
+
+  // Mark action as reported to prevent duplicate reporting (stored in metadata JSON)
+  await prisma.action.update({
+    where: { id: actionId },
+    data: {
+      metadata: {
+        ...metadata,
+        outcomeReported: outcome,
+        reportedAt: new Date().toISOString(),
+        isGatewayReport
+      }
+    }
+  });
 
   // Recalculate reputation
   const newScore = await updateAgentReputation(action.agentId);

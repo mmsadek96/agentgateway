@@ -29,6 +29,12 @@ router.post('/', authenticateApiKey, async (req: AuthenticatedRequest, res: Resp
       return;
     }
 
+    // Cap actions array size to prevent DoS via oversized reports (#30)
+    if (actions.length > 100) {
+      res.status(400).json({ success: false, error: 'actions array cannot exceed 100 items per report' });
+      return;
+    }
+
     if (!certificateJti) {
       res.status(400).json({ success: false, error: 'certificateJti required' });
       return;

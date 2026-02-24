@@ -358,8 +358,15 @@ export class AgentGateway {
         console.error(`[@agent-trust/gateway] Failed to submit report to station:`, err.message);
       });
 
-      // Return result to the agent
-      const response: Record<string, unknown> = { ...result };
+      // Return result to the agent.
+      // SECURITY: Explicitly pick allowed fields instead of spreading the handler result.
+      // A malicious action handler could inject `accessToken`, `behavior`, or other
+      // gateway-controlled fields if we used `{ ...result }` (#18).
+      const response: Record<string, unknown> = {
+        success: result.success,
+        ...(result.data !== undefined && { data: result.data }),
+        ...(result.error !== undefined && { error: result.error }),
+      };
 
       // Include behavioral info in response
       if (behavior.flags.length > 0 || behavior.behaviorScore < 80) {

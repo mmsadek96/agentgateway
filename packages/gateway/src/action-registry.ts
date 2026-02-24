@@ -5,6 +5,11 @@ import {
   PublicActionInfo
 } from './types';
 
+// ─── Input Sanitization Constants (#20) ───
+const MAX_STRING_LENGTH = 10_000;  // Max length for any single string parameter
+const MAX_OBJECT_DEPTH = 5;        // Max nesting depth for object/array parameters
+const MAX_TOTAL_PARAMS = 50;       // Max total number of parameters (including nested keys)
+
 /**
  * Manages action definitions and handles execution.
  * Validates parameters, checks score thresholds, and runs handler functions.
@@ -47,6 +52,9 @@ export class ActionRegistry {
   /**
    * Validate parameters against an action's schema.
    * Returns an array of error messages (empty if valid).
+   *
+   * Security (#20): Enforces maxLength for strings, maxDepth for nested objects,
+   * and a total parameter count limit to prevent DoS via deeply nested or oversized payloads.
    */
   validateParams(actionName: string, params: Record<string, unknown>): string[] {
     const action = this.actions.get(actionName);
@@ -55,6 +63,13 @@ export class ActionRegistry {
     }
 
     const errors: string[] = [];
+
+    // Global check: total parameter count (prevents oversized payloads)
+    const totalKeys = this.countKeys(params, 0);
+    if (totalKeys > MAX_TOTAL_PARAMS) {
+      errors.push(`Too many parameters: ${totalKeys} exceeds maximum of ${MAX_TOTAL_PARAMS}`);
+      return errors; // Bail early — don't waste time validating each field
+    }
 
     // Check required parameters
     for (const [paramName, paramDef] of Object.entries(action.parameters)) {
@@ -72,6 +87,24 @@ export class ActionRegistry {
           errors.push(
             `Parameter "${paramName}" must be of type ${paramDef.type}, got ${actualType}`
           );
+          continue;
+        }
+
+        // String length check (#20)
+        if (typeof value === 'string' && value.length > MAX_STRING_LENGTH) {
+          errors.push(
+            `Parameter "${paramName}" exceeds max length: ${value.length} > ${MAX_STRING_LENGTH}`
+          );
+        }
+
+        // Object/array depth check (#20)
+        if (typeof value === 'object' && value !== null) {
+          const depth = this.measureDepth(value);
+          if (depth > MAX_OBJECT_DEPTH) {
+            errors.push(
+              `Parameter "${paramName}" exceeds max nesting depth: ${depth} > ${MAX_OBJECT_DEPTH}`
+            );
+          }
         }
       }
     }
@@ -85,6 +118,65 @@ export class ActionRegistry {
     }
 
     return errors;
+  }
+
+  /**
+   * Measure the nesting depth of an object or array.
+   */
+  private measureDepth(value: unknown, current = 0): number {
+    if (current > MAX_OBJECT_DEPTH) return current; // Short-circuit
+
+    if (Array.isArray(value)) {
+      let max = current + 1;
+      for (const item of value) {
+        if (typeof item === 'object' && item !== null) {
+          max = Math.max(max, this.measureDepth(item, current + 1));
+        }
+      }
+      return max;
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      let max = current + 1;
+      for (const v of Object.values(value)) {
+        if (typeof v === 'object' && v !== null) {
+          max = Math.max(max, this.measureDepth(v, current + 1));
+        }
+      }
+      return max;
+    }
+
+    return current;
+  }
+
+  /**
+   * Count total number of keys (including nested) in a params object.
+   */
+  private countKeys(value: unknown, current: number): number {
+    if (current > MAX_TOTAL_PARAMS) return current; // Short-circuit
+
+    if (Array.isArray(value)) {
+      let count = current;
+      for (const item of value) {
+        if (typeof item === 'object' && item !== null) {
+          count = this.countKeys(item, count);
+        }
+      }
+      return count;
+    }
+
+    if (typeof value === 'object' && value !== null) {
+      let count = current;
+      for (const v of Object.values(value)) {
+        count++;
+        if (typeof v === 'object' && v !== null) {
+          count = this.countKeys(v, count);
+        }
+      }
+      return count;
+    }
+
+    return current;
   }
 
   /**

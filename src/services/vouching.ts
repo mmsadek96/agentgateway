@@ -19,21 +19,37 @@ export async function createVouch(
     throw new Error('Agent cannot vouch for itself');
   }
 
-  // Find both agents
+  // Find voucher agent (must belong to the requesting developer)
   const voucherAgent = await prisma.agent.findUnique({
     where: { developerId_externalId: { developerId, externalId: voucherExternalId } }
-  });
-
-  const vouchedAgent = await prisma.agent.findUnique({
-    where: { developerId_externalId: { developerId, externalId: vouchedExternalId } }
   });
 
   if (!voucherAgent) {
     throw new Error('Voucher agent not found');
   }
 
+  // Find vouched agent — lookup across ALL developers (vouching is cross-developer)
+  // First try same developer, then search globally by externalId
+  let vouchedAgent = await prisma.agent.findUnique({
+    where: { developerId_externalId: { developerId, externalId: vouchedExternalId } }
+  });
+
+  // If not found for this developer, search globally
+  if (!vouchedAgent) {
+    vouchedAgent = await prisma.agent.findFirst({
+      where: { externalId: vouchedExternalId }
+    });
+  }
+
   if (!vouchedAgent) {
     throw new Error('Vouched agent not found');
+  }
+
+  // SECURITY: Prevent same-developer agents from vouching each other.
+  // This blocks the "sybil vouch" attack where a developer creates multiple agents
+  // and has them vouch for each other to inflate reputation scores.
+  if (voucherAgent.developerId === vouchedAgent.developerId) {
+    throw new Error('Agents belonging to the same developer cannot vouch for each other');
   }
 
   // Voucher must have good reputation to vouch
