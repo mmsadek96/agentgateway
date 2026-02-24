@@ -59,7 +59,11 @@ router.post('/buy', authenticateApiKey, async (req: AuthenticatedRequest, res: R
   }
   if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
-  const insuredAddress = process.env.DEPLOYER_ADDRESS || '0x5F3B19B9AB09f10cd176a401618c883473006E6A';
+  const insuredAddress = process.env.DEPLOYER_ADDRESS;
+  if (!insuredAddress) {
+    res.status(503).json({ success: false, error: 'DEPLOYER_ADDRESS not configured. DeFi operations unavailable.' });
+    return;
+  }
   const txHash = await buyInsurancePolicy(agentId, insuredAddress, coverageAmount, triggerScore, expiresAt);
   if (!txHash) {
     res.status(500).json({ success: false, error: 'Policy purchase failed' });

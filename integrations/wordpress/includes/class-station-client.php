@@ -101,9 +101,14 @@ class AgentTrust_Station_Client {
             return false;
         }
 
-        // Support both direct PEM key and JWKS-style response.
+        // Support multiple Station response formats:
+        // 1. Current Station format: { pem: "-----BEGIN PUBLIC KEY-----..." }
+        // 2. Legacy format: { public_key: "..." }
+        // 3. JWKS-style: { keys: [{ alg: "RS256", pem: "..." }] }
         $pem_key = null;
-        if ( isset( $data['public_key'] ) ) {
+        if ( isset( $data['pem'] ) ) {
+            $pem_key = $data['pem'];
+        } elseif ( isset( $data['public_key'] ) ) {
             $pem_key = $data['public_key'];
         } elseif ( isset( $data['keys'] ) && is_array( $data['keys'] ) ) {
             // Use the first RS256 key found.

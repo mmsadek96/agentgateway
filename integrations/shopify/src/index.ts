@@ -47,7 +47,15 @@ function getClientForShop(shop: string): ShopifyClient {
 // ---------------------------------------------------------------------------
 
 const app = express();
-app.use(express.json());
+
+// Parse JSON and preserve raw body for Shopify HMAC webhook verification
+app.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Health
@@ -204,10 +212,25 @@ async function verifyCertificate(
 
     const data = (await res.json()) as {
       success: boolean;
-      data?: { score?: number; agentId?: string };
+      data?: {
+        valid?: boolean;
+        payload?: { score?: number; agentId?: string; sub?: string };
+        score?: number;
+        agentId?: string;
+      };
     };
     if (!data.success || !data.data) return null;
 
+    // Station returns: { success, data: { valid, payload: { agentId, score, sub } } }
+    const payload = data.data.payload;
+    if (payload) {
+      return {
+        score: payload.score ?? 0,
+        agentId: payload.agentId ?? payload.sub ?? "unknown",
+      };
+    }
+
+    // Fallback for legacy response format
     return { score: data.data.score ?? 0, agentId: data.data.agentId ?? "unknown" };
   } catch {
     return null;
@@ -309,16 +332,56 @@ app.use(
 );
 
 // ---------------------------------------------------------------------------
-// Webhook receivers
+// Webhook receivers (HMAC-verified)
 // ---------------------------------------------------------------------------
 
-app.post("/webhooks/orders-create", (req: Request, res: Response) => {
+/**
+ * Verify Shopify webhook HMAC signature.
+ * Shopify sends X-Shopify-Hmac-Sha256 header with base64-encoded HMAC-SHA256.
+ */
+function verifyWebhookHmac(req: Request, res: Response, next: Function): void {
+  const hmacHeader = req.headers["x-shopify-hmac-sha256"] as string | undefined;
+  if (!hmacHeader) {
+    res.status(401).json({ error: "Missing HMAC header" });
+    return;
+  }
+
+  if (!SHOPIFY_API_SECRET) {
+    console.error("[Webhook] SHOPIFY_API_SECRET not configured, cannot verify HMAC");
+    res.status(500).json({ error: "Webhook verification not configured" });
+    return;
+  }
+
+  const rawBody = (req as any).rawBody as Buffer | undefined;
+  if (!rawBody) {
+    res.status(400).json({ error: "Missing raw body for HMAC verification" });
+    return;
+  }
+
+  const computed = crypto
+    .createHmac("sha256", SHOPIFY_API_SECRET)
+    .update(rawBody)
+    .digest("base64");
+
+  // Timing-safe comparison to prevent timing attacks
+  const hmacBuffer = Buffer.from(hmacHeader, "base64");
+  const computedBuffer = Buffer.from(computed, "base64");
+
+  if (hmacBuffer.length !== computedBuffer.length || !crypto.timingSafeEqual(hmacBuffer, computedBuffer)) {
+    res.status(401).json({ error: "Invalid webhook HMAC signature" });
+    return;
+  }
+
+  next();
+}
+
+app.post("/webhooks/orders-create", verifyWebhookHmac, (req: Request, res: Response) => {
   const shop = req.headers["x-shopify-shop-domain"] as string;
   handleOrderCreated("orders/create", shop, req.body);
   res.status(200).send("OK");
 });
 
-app.post("/webhooks/orders-fulfilled", (req: Request, res: Response) => {
+app.post("/webhooks/orders-fulfilled", verifyWebhookHmac, (req: Request, res: Response) => {
   const shop = req.headers["x-shopify-shop-domain"] as string;
   handleOrderFulfilled("orders/fulfilled", shop, req.body);
   res.status(200).send("OK");
@@ -341,11 +404,6 @@ export default app;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function generateNonce(length = 16): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+function generateNonce(): string {
+  return crypto.randomBytes(32).toString("hex");
 }

@@ -83,8 +83,12 @@ router.post('/:id/bet', authenticateApiKey, async (req: AuthenticatedRequest, re
     return;
   }
 
-  // In democratic design, we use the deployer wallet address since agents don't have wallets
-  const bettorAddress = process.env.DEPLOYER_ADDRESS || '0x5F3B19B9AB09f10cd176a401618c883473006E6A';
+  // Agents don't have wallets — use the deployer wallet as proxy
+  const bettorAddress = process.env.DEPLOYER_ADDRESS;
+  if (!bettorAddress) {
+    res.status(503).json({ success: false, error: 'DEPLOYER_ADDRESS not configured. DeFi operations unavailable.' });
+    return;
+  }
   const txHash = await placeBet(marketId, side, amount, bettorAddress);
   if (!txHash) {
     res.status(500).json({ success: false, error: 'Bet placement failed' });
@@ -97,16 +101,30 @@ router.post('/:id/bet', authenticateApiKey, async (req: AuthenticatedRequest, re
 /**
  * POST /markets/:id/settle
  * Authenticated — settle an expired market
+ * Body: { agentId }
+ *
+ * Requires agent ownership verification to prevent cross-tenant settlement.
  */
 router.post('/:id/settle', authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
   const marketId = parseInt(req.params.id);
+  if (isNaN(marketId)) {
+    res.status(400).json({ success: false, error: 'Invalid market ID' });
+    return;
+  }
+  const { agentId } = req.body;
+  if (!agentId) {
+    res.status(400).json({ success: false, error: 'agentId required for settlement authorization' });
+    return;
+  }
+  if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
+
   const txHash = await settleMarket(marketId);
   if (!txHash) {
     res.status(500).json({ success: false, error: 'Settlement failed' });
     return;
   }
 
-  res.json({ success: true, data: { txHash, marketId } });
+  res.json({ success: true, data: { txHash, marketId, agentId } });
 });
 
 /**
@@ -123,7 +141,11 @@ router.post('/:id/claim', authenticateApiKey, async (req: AuthenticatedRequest, 
   }
   if (!await verifyAgentOwnership(req.developer!.id, agentId, res)) return;
 
-  const claimantAddress = process.env.DEPLOYER_ADDRESS || '0x5F3B19B9AB09f10cd176a401618c883473006E6A';
+  const claimantAddress = process.env.DEPLOYER_ADDRESS;
+  if (!claimantAddress) {
+    res.status(503).json({ success: false, error: 'DEPLOYER_ADDRESS not configured. DeFi operations unavailable.' });
+    return;
+  }
   const txHash = await claimWinnings(marketId, claimantAddress);
   if (!txHash) {
     res.status(500).json({ success: false, error: 'Claim failed' });

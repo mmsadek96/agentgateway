@@ -175,9 +175,37 @@ router.get('/:agentId/vouches', authenticateApiKey, async (req: AuthenticatedReq
   }
 });
 
-// Verify agent identity (manual flag for now)
+/**
+ * Verify agent identity.
+ *
+ * Security: Requires the ADMIN_API_KEY header to prevent developers from
+ * self-verifying their own agents for a free +10 reputation score.
+ * In production, identity verification should be triggered by an admin
+ * after reviewing the agent's documentation, domain ownership, etc.
+ */
 router.post('/:agentId/verify-identity', authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    // Require admin authorization — self-service verification is a score inflation vector
+    const adminKey = process.env.ADMIN_API_KEY;
+    const providedAdminKey = req.headers['x-admin-key'] as string | undefined;
+
+    if (!adminKey || !providedAdminKey) {
+      res.status(403).json({
+        success: false,
+        error: 'Identity verification requires admin authorization. Contact the AgentTrust team.'
+      });
+      return;
+    }
+
+    // Timing-safe comparison to prevent brute-force
+    const adminBuf = Buffer.from(adminKey);
+    const providedBuf = Buffer.from(providedAdminKey);
+    if (adminBuf.length !== providedBuf.length ||
+        !require('crypto').timingSafeEqual(adminBuf, providedBuf)) {
+      res.status(403).json({ success: false, error: 'Invalid admin credentials' });
+      return;
+    }
+
     const developerId = req.developer!.id;
     const { agentId } = req.params;
 
@@ -187,6 +215,11 @@ router.post('/:agentId/verify-identity', authenticateApiKey, async (req: Authent
 
     if (!agent) {
       res.status(404).json({ success: false, error: 'Agent not found' });
+      return;
+    }
+
+    if (agent.identityVerified) {
+      res.status(409).json({ success: false, error: 'Agent identity already verified' });
       return;
     }
 

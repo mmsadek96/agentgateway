@@ -15,8 +15,13 @@ interface ReputationFactors {
   totalScore: number;
 }
 
-export async function calculateReputationScore(agentId: string): Promise<ReputationFactors> {
-  const agent = await prisma.agent.findUnique({
+/**
+ * Calculate reputation score for an agent.
+ * Accepts an optional Prisma client/transaction to ensure transactional consistency
+ * when called from within a $transaction block.
+ */
+export async function calculateReputationScore(agentId: string, db: typeof prisma = prisma): Promise<ReputationFactors> {
+  const agent = await db.agent.findUnique({
     where: { id: agentId },
     include: {
       vouchesReceived: true
@@ -97,7 +102,7 @@ export async function calculateReputationScore(agentId: string): Promise<Reputat
   // Looks at last 10 reputation events to compute momentum
   // Rapid recent failures create negative momentum; consistent successes create positive
   let momentumAdjustment = 0;
-  const recentEvents = await prisma.reputationEvent.findMany({
+  const recentEvents = await db.reputationEvent.findMany({
     where: { agentId },
     orderBy: { createdAt: 'desc' },
     take: 10,
@@ -158,7 +163,8 @@ export async function updateAgentReputation(agentId: string): Promise<number> {
     if (!agent) throw new Error('Agent not found');
 
     const oldScore = agent.reputationScore;
-    const factors = await calculateReputationScore(agentId);
+    // Pass the transaction client to ensure consistent reads within the transaction
+    const factors = await calculateReputationScore(agentId, tx as unknown as typeof prisma);
 
     await tx.agent.update({
       where: { id: agentId },

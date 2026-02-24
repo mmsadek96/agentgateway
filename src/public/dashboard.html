@@ -1542,6 +1542,20 @@
 
     // --- Helper Functions ---
 
+    /**
+     * Escape HTML special characters to prevent XSS when inserting
+     * user-controlled data into innerHTML templates.
+     */
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function formatNumber(n) {
       if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
       if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
@@ -1644,38 +1658,48 @@
           return;
         }
 
-        tbody.innerHTML = data.map(agent => `
+        tbody.innerHTML = data.map(agent => {
+          const eid = escapeHtml(agent.externalId);
+          const dev = escapeHtml(agent.developer);
+          const aid = escapeHtml(agent.id ? agent.id.substring(0, 8) : '');
+          const status = escapeHtml(agent.status);
+          const score = Number(agent.reputationScore) || 0;
+          const rate = Number(agent.successRate) || 0;
+          const actions = Number(agent.totalActions) || 0;
+          const stake = Number(agent.stakeAmount) || 0;
+          const vouches = Number(agent.vouchesReceived) || 0;
+          return `
           <tr>
             <td>
               <div style="display:flex;align-items:center;gap:10px;">
-                <div style="width:32px;height:32px;border-radius:8px;background:${getScoreColor(agent.reputationScore)}20;color:${getScoreColor(agent.reputationScore)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
-                  ${agent.externalId.substring(0, 2).toUpperCase()}
+                <div style="width:32px;height:32px;border-radius:8px;background:${getScoreColor(score)}20;color:${getScoreColor(score)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
+                  ${eid.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <div style="font-weight: 600; font-size: 13px;">${agent.externalId}</div>
-                  <div style="font-size: 11px; color: var(--text-dim); font-family: monospace;">${agent.id.substring(0, 8)}...</div>
+                  <div style="font-weight: 600; font-size: 13px;">${eid}</div>
+                  <div style="font-size: 11px; color: var(--text-dim); font-family: monospace;">${aid}...</div>
                 </div>
               </div>
             </td>
-            <td style="color: var(--text-dim); font-size: 13px;">${agent.developer}</td>
-            <td><span class="status-badge status-${agent.status}">${agent.status}</span></td>
-            <td><span class="score-badge ${getScoreClass(agent.reputationScore)}">${agent.reputationScore}</span></td>
-            <td style="font-size: 13px;">${agent.totalActions}</td>
+            <td style="color: var(--text-dim); font-size: 13px;">${dev}</td>
+            <td><span class="status-badge status-${status}">${status}</span></td>
+            <td><span class="score-badge ${getScoreClass(score)}">${score}</span></td>
+            <td style="font-size: 13px;">${actions}</td>
             <td>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <div style="flex: 1; height: 4px; background: var(--border); border-radius: 2px; max-width: 60px;">
-                  <div style="height: 100%; width: ${agent.successRate}%; background: ${agent.successRate >= 80 ? 'var(--success)' : agent.successRate >= 50 ? 'var(--warning)' : 'var(--danger)'}; border-radius: 2px; transition: width 0.6s;"></div>
+                  <div style="height: 100%; width: ${rate}%; background: ${rate >= 80 ? 'var(--success)' : rate >= 50 ? 'var(--warning)' : 'var(--danger)'}; border-radius: 2px; transition: width 0.6s;"></div>
                 </div>
-                <span style="font-size: 12px; color: var(--text-dim);">${agent.successRate}%</span>
+                <span style="font-size: 12px; color: var(--text-dim);">${rate}%</span>
               </div>
             </td>
-            <td style="font-size: 13px; color: ${agent.stakeAmount > 0 ? 'var(--success)' : 'var(--text-dim)'}">
-              ${agent.stakeAmount > 0 ? '$' + agent.stakeAmount.toFixed(2) : '-'}
+            <td style="font-size: 13px; color: ${stake > 0 ? 'var(--success)' : 'var(--text-dim)'}">
+              ${stake > 0 ? '$' + stake.toFixed(2) : '-'}
             </td>
-            <td style="font-size: 13px;">${agent.vouchesReceived}</td>
+            <td style="font-size: 13px;">${vouches}</td>
             <td>${agent.identityVerified ? '<span style="color: var(--success);">&#x2713; Yes</span>' : '<span style="color: var(--text-dim);">No</span>'}</td>
           </tr>
-        `).join('');
+        `;}).join('');
       } catch (e) {
         console.error('Failed to load agents:', e);
         document.getElementById('agents-tbody').innerHTML =
@@ -1696,23 +1720,29 @@
           return;
         }
 
-        feed.innerHTML = data.map(a => `
+        feed.innerHTML = data.map(a => {
+          const decision = a.decision === 'allowed' ? 'allowed' : 'denied';
+          const agentEid = escapeHtml(a.agentExternalId);
+          const actionType = escapeHtml(a.actionType);
+          const reason = escapeHtml(a.reason);
+          const score = Number(a.agentScore) || 0;
+          return `
           <div class="action-item">
-            <div class="action-icon ${a.decision}">
-              ${a.decision === 'allowed' ? '&#x2713;' : '&#x2717;'}
+            <div class="action-icon ${decision}">
+              ${decision === 'allowed' ? '&#x2713;' : '&#x2717;'}
             </div>
             <div class="action-details">
               <div class="action-title">
-                <span style="color: var(--primary);">${a.agentExternalId}</span> &rarr;
-                <code style="background: var(--bg); padding: 1px 6px; border-radius: 3px; font-size: 12px;">${a.actionType}</code>
+                <span style="color: var(--primary);">${agentEid}</span> &rarr;
+                <code style="background: var(--bg); padding: 1px 6px; border-radius: 3px; font-size: 12px;">${actionType}</code>
               </div>
               <div class="action-meta">
-                ${a.decision === 'allowed' ? 'Allowed' : 'Denied'} &mdash; Score: ${a.agentScore} &mdash; ${a.reason}
+                ${decision === 'allowed' ? 'Allowed' : 'Denied'} &mdash; Score: ${score} &mdash; ${reason}
               </div>
             </div>
             <div class="action-time">${timeAgo(a.createdAt)}</div>
           </div>
-        `).join('');
+        `;}).join('');
       } catch (e) {
         console.error('Failed to load actions:', e);
         document.getElementById('actions-feed').innerHTML =
@@ -1829,14 +1859,18 @@
           if (c.revoked) { statusClass = 'cert-revoked'; statusText = 'Revoked'; }
           else if (c.expired) { statusClass = 'cert-expired'; statusText = 'Expired'; }
 
+          const agentEid = escapeHtml(c.agentExternalId);
+          const jti = escapeHtml(c.jti ? c.jti.substring(0, 12) : '');
+          const score = Number(c.scoreAtIssuance) || 0;
+
           return `
             <div class="cert-item">
               <div>
-                <div class="cert-agent">${c.agentExternalId}</div>
-                <div class="cert-jti">${c.jti.substring(0, 12)}...</div>
+                <div class="cert-agent">${agentEid}</div>
+                <div class="cert-jti">${jti}...</div>
               </div>
               <div style="text-align: center;">
-                <span class="score-badge ${getScoreClass(c.scoreAtIssuance)}" style="font-size: 11px;">${c.scoreAtIssuance}</span>
+                <span class="score-badge ${getScoreClass(score)}" style="font-size: 11px;">${score}</span>
               </div>
               <div style="text-align: right;">
                 <span class="cert-status ${statusClass}">${statusText}</span>
@@ -1865,18 +1899,23 @@
 
         container.innerHTML = `
           <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-            ${data.map(g => `
+            ${data.map(g => {
+              const gid = escapeHtml(g.gatewayId);
+              const reports = Number(g.totalReports) || 0;
+              const actions = Number(g.totalActions) || 0;
+              const rate = Number(g.successRate) || 0;
+              return `
               <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; transition: all 0.25s; position: relative; overflow: hidden;">
                 <div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--gradient-primary);"></div>
-                <div class="gateway-name">${g.gatewayId}</div>
+                <div class="gateway-name">${gid}</div>
                 <div class="gateway-stats" style="flex-wrap: wrap;">
-                  <span>Reports: <span class="gateway-stat-value">${g.totalReports}</span></span>
-                  <span>Actions: <span class="gateway-stat-value">${g.totalActions}</span></span>
-                  <span>Success: <span class="gateway-stat-value" style="color: var(--success);">${g.successRate}%</span></span>
+                  <span>Reports: <span class="gateway-stat-value">${reports}</span></span>
+                  <span>Actions: <span class="gateway-stat-value">${actions}</span></span>
+                  <span>Success: <span class="gateway-stat-value" style="color: var(--success);">${rate}%</span></span>
                 </div>
                 <div style="font-size: 11px; color: var(--text-dim); margin-top: 8px;">Last report: ${timeAgo(g.lastReport)}</div>
               </div>
-            `).join('')}
+            `;}).join('')}
           </div>
         `;
       } catch (e) {
@@ -2109,12 +2148,15 @@
         if (data.contracts) {
           const contracts = data.contracts;
           const basescanUrl = 'https://basescan.org/address/';
-          document.getElementById('contract-grid').innerHTML = Object.entries(contracts).map(([name, addr]) => `
+          document.getElementById('contract-grid').innerHTML = Object.entries(contracts).map(([name, addr]) => {
+            const safeName = escapeHtml(name.replace(/([A-Z])/g, ' $1').trim());
+            const safeAddr = escapeHtml(addr);
+            return `
             <div class="contract-item">
-              <span class="contract-name">${name.replace(/([A-Z])/g, ' $1').trim()}</span>
-              <a href="${basescanUrl}${addr}" target="_blank" rel="noopener" class="contract-addr" title="${addr}">${truncateAddr(addr)}</a>
+              <span class="contract-name">${safeName}</span>
+              <a href="${basescanUrl}${safeAddr}" target="_blank" rel="noopener" class="contract-addr" title="${safeAddr}">${truncateAddr(safeAddr)}</a>
             </div>
-          `).join('');
+          `;}).join('');
         }
 
       } catch (e) {

@@ -322,6 +322,21 @@ class AgentTrust_Gateway {
             );
         }
 
+        // Enforce certificate scope if present.
+        if ( isset( $agent_context['scope'] ) && is_array( $agent_context['scope'] ) ) {
+            if ( ! in_array( $action_name, $agent_context['scope'], true ) ) {
+                return new WP_Error(
+                    'scope_violation',
+                    sprintf(
+                        'Action "%s" is not within the certificate scope. Allowed: %s',
+                        $action_name,
+                        implode( ', ', $agent_context['scope'] )
+                    ),
+                    array( 'status' => 403 )
+                );
+            }
+        }
+
         // Check the agent's trust score against the action's minimum.
         $action_def  = $actions[ $action_name ];
         $agent_score = isset( $agent_context['score'] ) ? (int) $agent_context['score'] : 0;
@@ -346,11 +361,13 @@ class AgentTrust_Gateway {
         // Calculate duration.
         $duration_ms = round( ( microtime( true ) - $start_time ) * 1000 );
 
-        // Build and submit the usage report.
-        $success = ! is_wp_error( $result );
-        $report  = array(
-            'gateway_id'  => $this->gateway_id,
-            'agent_id'    => isset( $agent_context['sub'] ) ? $agent_context['sub'] : 'unknown',
+        // Build and submit the usage report in Station-compatible format.
+        // Station expects: { agentId, gatewayId, certificateJti, actions: [...] }
+        $success          = ! is_wp_error( $result );
+        $agent_id_val     = isset( $agent_context['sub'] ) ? $agent_context['sub'] : 'unknown';
+        $certificate_jti  = isset( $agent_context['jti'] ) ? $agent_context['jti'] : '';
+
+        $action_entry = array(
             'action'      => $action_name,
             'success'     => $success,
             'duration_ms' => $duration_ms,
@@ -359,8 +376,15 @@ class AgentTrust_Gateway {
         );
 
         if ( ! $success ) {
-            $report['error'] = $result->get_error_message();
+            $action_entry['error'] = $result->get_error_message();
         }
+
+        $report = array(
+            'agentId'        => $agent_id_val,
+            'gatewayId'      => $this->gateway_id,
+            'certificateJti' => $certificate_jti,
+            'actions'        => array( $action_entry ),
+        );
 
         $this->station_client->submit_report( $report );
 

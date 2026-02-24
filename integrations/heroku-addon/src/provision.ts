@@ -43,47 +43,54 @@ router.post("/", async (req: Request, res: Response) => {
     let agentId: string;
 
     try {
-      const registerRes = await fetch(`${STATION_URL}/api/v1/developers/register`, {
+      // Register developer with Station (correct endpoint paths)
+      const registerRes = await fetch(`${STATION_URL}/developers/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
+          companyName: `heroku-${uuid}`,
           source: "heroku-addon",
           plan,
         }),
       });
 
       if (!registerRes.ok) {
-        throw new Error(`Station API returned ${registerRes.status}`);
+        throw new Error(`Station developer register returned ${registerRes.status}`);
       }
 
-      const devData = (await registerRes.json()) as { apiKey: string };
-      apiKey = devData.apiKey;
+      const devData = (await registerRes.json()) as { data?: { apiKey: string } };
+      if (!devData.data?.apiKey) {
+        throw new Error("Station did not return an API key");
+      }
+      apiKey = devData.data.apiKey;
 
-      // Register agent
-      const agentRes = await fetch(`${STATION_URL}/api/v1/agents/register`, {
+      // Register agent with Station (correct endpoint path)
+      const agentRes = await fetch(`${STATION_URL}/developers/agents`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          name: `heroku-${uuid}`,
+          externalId: `heroku-${uuid}`,
           source: "heroku-addon",
         }),
       });
 
       if (!agentRes.ok) {
-        throw new Error(`Station API agent register returned ${agentRes.status}`);
+        throw new Error(`Station agent register returned ${agentRes.status}`);
       }
 
-      const agentData = (await agentRes.json()) as { agentId: string };
-      agentId = agentData.agentId;
+      const agentData = (await agentRes.json()) as { data?: { externalId: string } };
+      agentId = agentData.data?.externalId || `heroku-${uuid}`;
     } catch (err) {
       console.error("Station API error during provisioning:", err);
-      // Fallback: generate local credentials so provisioning does not fail
-      apiKey = `at_${crypto.randomBytes(24).toString("hex")}`;
-      agentId = `agent_${crypto.randomBytes(16).toString("hex")}`;
+      // Fail provisioning rather than issuing fake credentials
+      return res.status(503).json({
+        error: "AgentTrust Station is unavailable. Provisioning failed.",
+        details: err instanceof Error ? err.message : "Unknown error",
+      });
     }
 
     // Store the resource mapping

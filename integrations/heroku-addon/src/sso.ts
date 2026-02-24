@@ -4,23 +4,40 @@ import { resourceMap } from "./provision";
 
 const router = Router();
 
-const SSO_SALT = process.env.SSO_SALT || "REPLACE_WITH_SSO_SALT";
+const SSO_SALT = process.env.SSO_SALT || "";
 const DASHBOARD_URL = process.env.DASHBOARD_URL || "https://dashboard.agenttrust.dev";
+
+// Fail fast if SSO salt is not configured or uses placeholder
+if (!SSO_SALT || SSO_SALT.startsWith("REPLACE")) {
+  console.error("FATAL: SSO_SALT environment variable is not configured. SSO will reject all requests.");
+}
 
 /**
  * Validate the Heroku SSO signature.
  * Expected token: sha1(resource_id + ':' + sso_salt + ':' + timestamp)
+ * Uses timing-safe comparison to prevent timing attacks.
  */
 function validateSSOSignature(
   resourceId: string,
   timestamp: string,
   token: string
 ): boolean {
+  if (!SSO_SALT || SSO_SALT.startsWith("REPLACE")) {
+    return false;
+  }
+
   const expected = crypto
     .createHash("sha1")
     .update(`${resourceId}:${SSO_SALT}:${timestamp}`)
     .digest("hex");
-  return expected === token;
+
+  // Timing-safe comparison
+  const expectedBuf = Buffer.from(expected, "hex");
+  const tokenBuf = Buffer.from(token, "hex");
+  if (expectedBuf.length !== tokenBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(expectedBuf, tokenBuf);
 }
 
 /**
