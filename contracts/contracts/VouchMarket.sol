@@ -41,6 +41,7 @@ contract VouchMarket is
         uint16 voucherScoreAtMint;         // Frozen reputation of voucher (0-1000)
         uint8 weight;                      // 1-5 (boost strength)
         uint40 mintedAt;                   // Timestamp
+        uint40 expiresAt;                  // SECURITY (#64): Vouch expiry timestamp (0 = no expiry)
         bool active;                       // Can be deactivated without burning
     }
 
@@ -61,6 +62,9 @@ contract VouchMarket is
     /// @notice Maximum vouches to iterate in view functions (gas protection)
     uint256 public constant MAX_VOUCH_ITERATION = 100;
 
+    /// @notice Default vouch duration: 90 days. Set to 0 for no expiry.
+    uint40 public vouchDuration = 90 days;
+
     // ─── Events ───
 
     event VouchMinted(
@@ -72,6 +76,7 @@ contract VouchMarket is
     );
     event VouchDeactivated(uint256 indexed tokenId);
     event VouchReactivated(uint256 indexed tokenId);
+    event VouchDurationUpdated(uint40 oldDuration, uint40 newDuration);
 
     // ─── Errors ───
 
@@ -129,13 +134,15 @@ contract VouchMarket is
         tokenId = ++nextTokenId; // Start from 1 (0 is reserved for "no vouch")
         _safeMint(recipient, tokenId);
 
-        // Store vouch data
+        // Store vouch data (with expiry if vouchDuration > 0)
+        uint40 expiry = vouchDuration > 0 ? uint40(block.timestamp) + vouchDuration : 0;
         vouchData[tokenId] = VouchData({
             voucherAgentId: voucherAgentId,
             vouchedAgentId: vouchedAgentId,
             voucherScoreAtMint: voucherScore,
             weight: weight,
             mintedAt: uint40(block.timestamp),
+            expiresAt: expiry,
             active: true
         });
 
@@ -199,7 +206,9 @@ contract VouchMarket is
         uint256[] storage tokenIds = agentVouches[agentId];
         uint256 len = tokenIds.length > MAX_VOUCH_ITERATION ? MAX_VOUCH_ITERATION : tokenIds.length;
         for (uint256 i = 0; i < len; i++) {
-            if (vouchData[tokenIds[i]].active) {
+            VouchData storage v = vouchData[tokenIds[i]];
+            // SECURITY (#64): Skip expired vouches — stale social capital should not persist
+            if (v.active && (v.expiresAt == 0 || block.timestamp < v.expiresAt)) {
                 count++;
             }
         }
@@ -227,7 +236,8 @@ contract VouchMarket is
 
         for (uint256 i = 0; i < len; i++) {
             VouchData storage v = vouchData[tokenIds[i]];
-            if (v.active) {
+            // SECURITY (#64): Skip expired vouches in reputation scoring
+            if (v.active && (v.expiresAt == 0 || block.timestamp < v.expiresAt)) {
                 // Weight contributes: a weight-5 vouch from a 900-score agent > weight-1 from 600-score
                 weightedCount += uint256(v.weight);
             }
@@ -338,6 +348,18 @@ contract VouchMarket is
             mstore(result, encodedLen)
         }
         return string(result);
+    }
+
+    // ─── Admin ───
+
+    /**
+     * @notice Update the default vouch duration. Set to 0 for no expiry.
+     * @param _duration New duration in seconds (e.g., 90 days = 7776000)
+     */
+    function setVouchDuration(uint40 _duration) external onlyOwner {
+        uint40 oldDuration = vouchDuration;
+        vouchDuration = _duration;
+        emit VouchDurationUpdated(oldDuration, _duration);
     }
 
     // ─── Emergency Pause (#87) ───

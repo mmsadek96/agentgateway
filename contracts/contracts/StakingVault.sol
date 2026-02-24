@@ -53,15 +53,35 @@ contract StakingVault is
     /// @notice Agent stakes indexed by bytes32 agentId
     mapping(bytes32 => StakeInfo) public agentStakes;
 
+    // ─── SECURITY (#61): Slash Timelock ───
+    // Slashing now uses a request → delay → execute pattern.
+    // Agents are notified during the delay window and can dispute via the API.
+
+    struct PendingSlash {
+        bytes32 agentId;
+        uint256 basisPoints;
+        uint40 requestedAt;
+        bool executed;
+        bool cancelled;
+    }
+
+    uint256 public slashDelay;                          // Default 24 hours
+    uint256 public nextSlashId;
+    mapping(uint256 => PendingSlash) public pendingSlashes;
+
     // ─── Events ───
 
     event Staked(bytes32 indexed agentId, uint256 amount, uint256 totalStake);
     event UnstakeRequested(bytes32 indexed agentId, uint256 amount, uint40 unlockTime);
     event UnstakeCompleted(bytes32 indexed agentId, uint256 amount);
     event Slashed(bytes32 indexed agentId, uint256 amount, address destination);
+    event SlashRequested(uint256 indexed slashId, bytes32 indexed agentId, uint256 basisPoints, uint40 executeAfter);
+    event SlashExecuted(uint256 indexed slashId, bytes32 indexed agentId, uint256 amount);
+    event SlashCancelled(uint256 indexed slashId, bytes32 indexed agentId);
     event CooldownPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event SlashBasisPointsUpdated(uint256 oldBps, uint256 newBps);
     event InsurancePoolUpdated(address oldPool, address newPool);
+    event SlashDelayUpdated(uint256 oldDelay, uint256 newDelay);
 
     // ─── Errors ───
 
@@ -72,6 +92,10 @@ contract StakingVault is
     error InsurancePoolNotSet();
     error ZeroAmount();
     error BpsTooHigh(uint256 bps);
+    error SlashDelayNotMet(uint256 slashId, uint40 executeAfter, uint40 currentTime);
+    error SlashAlreadyExecuted(uint256 slashId);
+    error SlashAlreadyCancelled(uint256 slashId);
+    error SlashNotFound(uint256 slashId);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -92,6 +116,7 @@ contract StakingVault is
         agentRegistry = IAgentRegistry(_agentRegistry);
         cooldownPeriod = 7 days;
         slashBasisPoints = 1000; // 10%
+        slashDelay = 1 days;     // SECURITY (#61): 24h dispute window before slash executes
     }
 
     // ─── Core Staking ───
@@ -164,18 +189,52 @@ contract StakingVault is
         emit UnstakeCompleted(agentId, amount);
     }
 
-    // ─── Slashing ───
+    // ─── Slashing (SECURITY #61: Timelock pattern) ───
+    // Slashing uses a request → delay → execute pattern so agents can dispute.
 
     /**
-     * @notice Slash an agent's stake. Sends slashed amount to insurance pool.
+     * @notice Request to slash an agent's stake. Starts the dispute window.
      * @param agentId The agent's bytes32 identifier
      * @param basisPoints Slash percentage in basis points (1000 = 10%)
+     * @return slashId ID of the pending slash (for tracking/cancellation)
      */
-    function slash(bytes32 agentId, uint256 basisPoints) external onlyOwner {
+    function requestSlash(bytes32 agentId, uint256 basisPoints) external onlyOwner returns (uint256 slashId) {
         if (insurancePool == address(0)) revert InsurancePoolNotSet();
+        if (basisPoints > 10000) revert BpsTooHigh(basisPoints);
 
-        StakeInfo storage info = agentStakes[agentId];
-        uint256 slashAmount = (info.stakedAmount * basisPoints) / 10000;
+        slashId = nextSlashId++;
+        uint40 executeAfter = uint40(block.timestamp) + uint40(slashDelay);
+
+        pendingSlashes[slashId] = PendingSlash({
+            agentId: agentId,
+            basisPoints: basisPoints,
+            requestedAt: uint40(block.timestamp),
+            executed: false,
+            cancelled: false
+        });
+
+        emit SlashRequested(slashId, agentId, basisPoints, executeAfter);
+    }
+
+    /**
+     * @notice Execute a pending slash after the delay window has passed.
+     * @param slashId ID of the pending slash to execute
+     */
+    function executeSlash(uint256 slashId) external onlyOwner {
+        PendingSlash storage ps = pendingSlashes[slashId];
+        if (ps.requestedAt == 0) revert SlashNotFound(slashId);
+        if (ps.executed) revert SlashAlreadyExecuted(slashId);
+        if (ps.cancelled) revert SlashAlreadyCancelled(slashId);
+
+        uint40 executeAfter = ps.requestedAt + uint40(slashDelay);
+        if (block.timestamp < executeAfter) {
+            revert SlashDelayNotMet(slashId, executeAfter, uint40(block.timestamp));
+        }
+
+        ps.executed = true;
+
+        StakeInfo storage info = agentStakes[ps.agentId];
+        uint256 slashAmount = (info.stakedAmount * ps.basisPoints) / 10000;
         if (slashAmount == 0) return;
 
         info.stakedAmount -= slashAmount;
@@ -187,7 +246,23 @@ contract StakingVault is
         // Send $TRUST to insurance pool
         trustToken.safeTransfer(insurancePool, slashAmount);
 
-        emit Slashed(agentId, slashAmount, insurancePool);
+        emit SlashExecuted(slashId, ps.agentId, slashAmount);
+        emit Slashed(ps.agentId, slashAmount, insurancePool);
+    }
+
+    /**
+     * @notice Cancel a pending slash (e.g., dispute resolved in agent's favor).
+     * @param slashId ID of the pending slash to cancel
+     */
+    function cancelSlash(uint256 slashId) external onlyOwner {
+        PendingSlash storage ps = pendingSlashes[slashId];
+        if (ps.requestedAt == 0) revert SlashNotFound(slashId);
+        if (ps.executed) revert SlashAlreadyExecuted(slashId);
+        if (ps.cancelled) revert SlashAlreadyCancelled(slashId);
+
+        ps.cancelled = true;
+
+        emit SlashCancelled(slashId, ps.agentId);
     }
 
     // ─── View Functions ───
@@ -245,6 +320,12 @@ contract StakingVault is
         address oldPool = insurancePool;
         insurancePool = _pool;
         emit InsurancePoolUpdated(oldPool, _pool);
+    }
+
+    function setSlashDelay(uint256 _delay) external onlyOwner {
+        uint256 oldDelay = slashDelay;
+        slashDelay = _delay;
+        emit SlashDelayUpdated(oldDelay, _delay);
     }
 
     // ─── Emergency Pause (#87) ───

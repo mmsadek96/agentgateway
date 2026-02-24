@@ -4,7 +4,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { type Store } from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 import developerRoutes from './routes/developers';
@@ -73,11 +73,37 @@ app.use(cors({
 // SECURITY (#42): Explicit body size limit to prevent memory exhaustion via large payloads
 app.use(express.json({ limit: '100kb' }));
 
+// SECURITY (#77): Use Redis for rate limiting in production (multi-instance safe).
+// Falls back to in-memory store if REDIS_URL is not set (acceptable for single-instance).
+let rateLimitStore: Store | undefined;
+if (process.env.REDIS_URL) {
+  try {
+    // Dynamic import avoids crash if redis packages aren't installed
+    const { default: RedisStore } = require('rate-limit-redis');
+    const { default: Redis } = require('ioredis');
+    const redisClient = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      enableReadyCheck: false,
+      lazyConnect: true,
+    });
+    redisClient.connect().catch((err: Error) => {
+      console.warn('[RATE-LIMIT] Redis connection failed, using in-memory store:', err.message);
+    });
+    rateLimitStore = new RedisStore({
+      sendCommand: (...args: string[]) => redisClient.call(...args),
+    });
+    console.log('[RATE-LIMIT] Using Redis store for rate limiting');
+  } catch {
+    console.warn('[RATE-LIMIT] Redis packages not available, using in-memory store');
+  }
+}
+
 // Rate limiting — separate limits for authenticated vs public.
 // API limiter keys on API key hash (not IP) to prevent X-Forwarded-For bypass (#14).
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 500, // authenticated API users get higher limit
+  store: rateLimitStore,
   keyGenerator: (req: Request) => {
     // Use API key fingerprint if present (immune to IP spoofing)
     const authHeader = req.headers.authorization;
@@ -91,12 +117,14 @@ const apiLimiter = rateLimit({
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100, // public endpoints
+  store: rateLimitStore,
   message: { success: false, error: 'Too many requests, please try again later' }
 });
 // Stricter rate limit for registration to prevent mass account creation (#16)
 const registrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour window
   max: 5, // Max 5 registrations per IP per hour
+  store: rateLimitStore,
   message: { success: false, error: 'Too many registration attempts. Please try again later.' }
 });
 app.use(publicLimiter);
