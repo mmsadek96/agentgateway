@@ -393,6 +393,7 @@ Monitor your Station in real-time at `/dashboard`:
 - [x] Real-time behavioral tracking (9 detection algorithms, including derivative-based detection)
 - [x] Blockchain integration — Base L2 on-chain reputation, certificates, and audit ledger
 - [x] DeFi derivatives layer — $TRUST token, liquid staking, reputation markets, agent insurance, vouch NFTs, DAO governance
+- [x] Comprehensive security audit — 91 findings across contracts, API, gateway, SDK, and integrations (all addressed)
 - [ ] Webhook notifications for trust events
 - [ ] Advanced ML behavioral models
 - [ ] Agent-to-agent trust delegation
@@ -400,11 +401,97 @@ Monitor your Station in real-time at `/dashboard`:
 - [ ] SDK for Python, Go, Rust
 - [ ] Reputation decay over inactivity
 
+## Project Structure
+
+```
+agentgateway/
+├── src/                         # Station server (hosted API)
+│   ├── routes/                  # API endpoints
+│   ├── services/                # Business logic + blockchain sync
+│   ├── middleware/               # Auth, rate limiting
+│   └── public/                  # Landing page + dashboard
+├── packages/
+│   ├── gateway/                 # @agent-trust/gateway (Express middleware)
+│   ├── agent-sdk/               # @agent-trust/sdk (Agent client library)
+│   ├── langchain/               # Python LangChain integration
+│   └── openclaw-skill/          # OpenClaw skill definition
+├── contracts/                   # Solidity smart contracts (Base L2)
+│   ├── contracts/               # 10 UUPS-upgradeable contracts
+│   └── scripts/                 # Deployment + upgrade scripts
+├── integrations/
+│   ├── shopify/                 # Shopify app integration
+│   ├── wordpress/               # WordPress plugin
+│   └── heroku-addon/            # Heroku Marketplace add-on
+├── templates/
+│   ├── replit-gateway/          # One-click Replit template
+│   └── bolt-gateway/            # One-click Bolt template
+└── prisma/                      # Database schema
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | Secret for signing JWT certificates |
+| `BASE_PRIVATE_KEY` | For DeFi | Wallet private key for blockchain operations |
+| `ADMIN_API_KEY` | Recommended | Admin key for identity verification + dashboard |
+| `DASHBOARD_API_KEY` | Recommended | Key for dashboard authentication |
+| `DEPLOYER_ADDRESS` | For DeFi | On-chain wallet address for DeFi routes |
+| `CORS_ORIGINS` | Production | Comma-separated allowed origins |
+| `REDIS_URL` | Optional | Redis URL for distributed rate limiting |
+| `BASESCAN_API_KEY` | For deployment | BaseScan contract verification |
+
+## Security
+
+AgentTrust has undergone a comprehensive security audit covering all 10 smart contracts, the Station API, gateway middleware, agent SDK, and all integrations (Shopify, WordPress, Heroku). **91 findings** were identified and addressed across 8 remediation batches.
+
+**Smart contract security:**
+- All 9 UUPS-upgradeable contracts include `uint256[50] private __gap` storage slots for safe upgrades
+- Emergency pause (`PausableUpgradeable`) on all DeFi contracts
+- Slash timelock pattern: `requestSlash()` → 24-hour dispute window → `executeSlash()`
+- Vouch expiry (90-day default) prevents stale social capital
+- Per-transaction mint cap limits blast radius of key compromise
+- TrustGovernor upgrades restricted to `onlyGovernance` (full proposal + timelock required)
+
+**API & middleware security:**
+- RS256 (4096-bit RSA) certificate signing
+- Per-API-key rate limiting (immune to X-Forwarded-For spoofing)
+- SSRF prevention on all URL inputs (blocks private IPs, cloud metadata endpoints)
+- CSP nonce-based script protection
+- ML-powered prompt injection and malicious URL detection
+- 9 real-time behavioral detection algorithms with derivative-based analysis
+
+**Reporting security issues:** If you discover a vulnerability, please email mmsadek96@gmail.com with subject "AgentTrust Security". Do not open a public GitHub issue. We aim to respond within 48 hours.
+
 ## Contributing
 
-We welcome contributions to the **gateway middleware**, **agent SDK**, **behavioral detection algorithms**, and **smart contracts**. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions to the **gateway middleware**, **agent SDK**, **behavioral detection algorithms**, and **smart contracts**.
 
-Whether it's improving detection algorithms, building SDKs in new languages, writing contract tests, or documentation — we'd love your help.
+**Getting started:**
+
+```bash
+git clone https://github.com/mmsadek96/agentgateway.git
+cd agentgateway && npm install
+
+# Work on a specific component:
+cd packages/gateway      # Gateway middleware
+cd packages/agent-sdk    # Agent SDK
+cd contracts             # Smart contracts (Hardhat)
+```
+
+**High-impact areas:**
+
+| Area | Difficulty | Impact |
+|------|-----------|--------|
+| Python SDK | Medium | High |
+| Test suite (Jest + Hardhat) | Medium | High |
+| Webhook system | Medium | High |
+| Rate limiting by trust tier | Medium | High |
+| Go / Rust SDK | Medium | Medium |
+| CI/CD pipeline | Easy | Medium |
+
+PRs should be focused (one feature/fix per PR), describe the *why* not just the *what*, and reference related issues.
 
 ## License
 
