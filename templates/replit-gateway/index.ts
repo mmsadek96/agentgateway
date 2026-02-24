@@ -12,6 +12,9 @@ const AGENT_ID = process.env.AGENT_ID || '';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // ─── Mock Product Catalog ───
+// SECURITY (#88): This is DEMO DATA for template purposes only.
+// Replace with your actual product database or API before deploying to production.
+// Do not expose mock data in a production environment.
 
 interface Product {
   id: string;

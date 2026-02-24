@@ -55,26 +55,43 @@ export async function authenticateApiKey(
       }
     }
 
-    // Fallback: iterate all developers (for keys created before fingerprint was added)
-    const developers = await prisma.developer.findMany();
-    for (const developer of developers) {
+    // SECURITY (#69): Fallback for keys created before fingerprint was added.
+    // Limit to developers without a fingerprint set to avoid iterating all rows.
+    // Always perform at least one bcrypt.compare to make timing consistent.
+    const developersWithoutFP = await prisma.developer.findMany({
+      where: { apiKeyFingerprint: null }
+    });
+
+    let matchedDeveloper: typeof developersWithoutFP[0] | null = null;
+    for (const developer of developersWithoutFP) {
       const isValid = await bcrypt.compare(apiKey, developer.apiKeyHash);
       if (isValid) {
-        // Backfill fingerprint for future fast lookups
-        await prisma.developer.update({
-          where: { id: developer.id },
-          data: { apiKeyFingerprint: keyFingerprint }
-        }).catch(() => {}); // Non-blocking backfill
-
-        req.developer = {
-          id: developer.id,
-          email: developer.email,
-          companyName: developer.companyName,
-          plan: developer.plan
-        };
-        next();
-        return;
+        matchedDeveloper = developer;
+        // Don't break — continue comparing to maintain constant-ish timing
       }
+    }
+
+    // If no developers without fingerprints exist, do a dummy bcrypt comparison
+    // to prevent timing oracle that reveals whether fallback path was entered.
+    if (developersWithoutFP.length === 0) {
+      await bcrypt.compare(apiKey, '$2b$10$0000000000000000000000000000000000000000000000000000').catch(() => {});
+    }
+
+    if (matchedDeveloper) {
+      // Backfill fingerprint for future fast lookups
+      await prisma.developer.update({
+        where: { id: matchedDeveloper.id },
+        data: { apiKeyFingerprint: keyFingerprint }
+      }).catch(() => {}); // Non-blocking backfill
+
+      req.developer = {
+        id: matchedDeveloper.id,
+        email: matchedDeveloper.email,
+        companyName: matchedDeveloper.companyName,
+        plan: matchedDeveloper.plan
+      };
+      next();
+      return;
     }
 
     res.status(401).json({ success: false, error: 'Invalid API key' });

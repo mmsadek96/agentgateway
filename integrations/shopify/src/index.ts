@@ -313,8 +313,9 @@ app.post("/agent-gateway", async (req: Request, res: Response) => {
 
     res.json({ success: true, action, result, agent: verified.agentId, accessToken });
   } catch (err: any) {
-    console.error(`[Gateway] Action "${action}" failed:`, err);
-    res.status(500).json({ error: err.message, action });
+    // SECURITY (#82): Log only error type/message, not full error object which may contain PII
+    console.error(`[Gateway] Action "${action}" failed:`, err?.message || 'Unknown error');
+    res.status(500).json({ error: 'Action execution failed', action });
   }
 });
 

@@ -2,7 +2,7 @@
 
 **Sources:** Claude Opus audit (70 findings) + Codex audit (16 findings)
 **Date:** 2026-02-23
-**Last Updated:** 2026-02-24 (batch 4)
+**Last Updated:** 2026-02-24 (batch 5)
 **Deduplication:** 9 overlapping findings merged, resulting in 77 unique findings
 
 ---
@@ -11,11 +11,11 @@
 
 | Status | Count | Details |
 |--------|-------|---------|
-| **FIXED** | 52 | #1-#5, #6-#18, #19-#31, #33, #37, #38, #40-#50, #52, #53, #57, #58, #60, #65-#68, #81 |
+| **FIXED** | 66 | #1-#5, #6-#18, #19-#31, #33, #35, #37-#53, #57, #58, #60, #65-#69, #71-#73, #76, #80-#83, #86, #88, #91 |
 | **PARTIALLY FIXED** | 2 | #32 (Decimal), #59 (Heroku store warning) |
 | **Open (CRITICAL+HIGH)** | 0 | All HIGH findings fixed! |
-| **Open (MEDIUM)** | 11 | #34-#36, #39, #51, #54-#56, #61-#64 |
-| **Open (LOW+INFO)** | 22 | #69-#80, #82-#91 |
+| **Open (MEDIUM)** | 8 | #34, #36, #54-#56, #61-#64 |
+| **Open (LOW+INFO)** | 11 | #70, #74, #75, #77-#79, #84, #85, #87, #89, #90 |
 
 ---
 
@@ -327,7 +327,10 @@
 ### 35. [C] Momentum System Gameable
 - **Claude:** ST-7.2 MEDIUM
 - **Fix:** Minimum time gap, cross-gateway diversity.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Positive momentum now dampened when events are clustered (amplifier capped at 1x for spans < 1 hour)
+  - Negative momentum retains up to 3x amplifier for rapid failure detection
+  - Prevents attackers from inflating scores via rapid positive event bursts
 
 ### 36. [C] Private Key in Plain Env Var (2 Wallet Instances)
 - **Claude:** ST-5.1 MEDIUM
@@ -351,7 +354,11 @@
 ### 39. [C] CSP Allows unsafe-inline
 - **Claude:** ST-10.1 MEDIUM
 - **Fix:** External scripts + nonce CSP.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Replaced `'unsafe-inline'` with per-request CSP nonce for `scriptSrc`
+  - Nonce generated via `crypto.randomBytes(16)` per request, attached to `res.locals.cspNonce`
+  - Dashboard served via dynamic route that injects nonce into inline `<script>` tag
+  - Inline styles kept as `'unsafe-inline'` (lower risk than scripts)
 
 ### 40. [C] Internal UUIDs Exposed in Reports
 - **Claude:** ST-8.2 MEDIUM
@@ -435,7 +442,10 @@
 ### 51. [C] Reduced Penalty for Repeat Violations
 - **Claude:** GW-12 MEDIUM
 - **Fix:** Escalating penalties.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Changed repeated violation penalty from `violationPenalty / 2` (decreasing) to `violationPenalty * 1.5` (escalating)
+  - Repeat violations now cost MORE than first occurrence, not less
+  - Prevents attackers from repeatedly triggering violations at diminishing cost
 
 ### 52. [C] Shield Secret Exposed via Getter
 - **Claude:** GW-14 MEDIUM
@@ -563,30 +573,93 @@
 ## TIER 3: LOW + INFO (Backlog)
 
 ### 69. [C] Timing Oracle in API Key Fallback (ST-1.1)
-### 70. [C] No Type Validation on context Field (ST-2.3)
-### 71. [C] No Email Format Validation (ST-2.4)
-### 72. [C] No Length Limit on externalId (ST-2.5)
-### 73. [C] Certs Issuable for Inactive Agents (ST-4.3)
-### 74. [C] Private Keys Cached in Memory (ST-4.2)
-### 75. [C] Error Messages Leak Internal State (ST-11.1)
-### 76. [C] Swagger UI Exposed in Production (ST-12.2)
-### 77. [C] In-Memory Rate Limit Store (ST-12.4)
-### 78. [C] Session Data Disclosure (GW-16)
-### 79. [C] Access Token Payload Not Encrypted (GW-17)
-### 80. [C] Prototype Pollution via Params (GW-18)
-### 81. [C] Token Set Twice in fetchProtected (SDK-26) — FIXED (2026-02-24) as part of #23
-### 82. [C] PII Logged in Webhooks (S-4)
-### 83. [C] WP Shield Secret Quality (W-3)
-### 84. [C] WP Admin Settings Nonce (W-4)
-### 85. [C] TrustToken Governance Mint Risk (C-6)
-### 86. [C] Storage Gap Missing in UUPS (C-7)
-### 87. [C] No Pausable on DeFi Contracts (C-8)
-### 88. [C] Template Mock Catalog Disclosure (T-1)
-### 89. [C] Template No HTTPS Enforcement (T-2)
-### 90. [C] RSA 2048-bit Key Size (ST-4.1)
-### 91. [X] Report Ingestion Stores Failures as 'allowed' (Codex #16)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Fallback now only iterates developers without a fingerprint (not all developers)
+  - Continues comparing all candidates even after match found (constant-ish timing)
+  - Performs dummy bcrypt comparison if no fallback candidates exist (prevents timing oracle)
 
-All TIER 3 items: **Status: OPEN**
+### 70. [C] No Type Validation on context Field (ST-2.3)
+- **Status:** OPEN (design decision — context field is freeform JSON by design)
+
+### 71. [C] No Email Format Validation (ST-2.4)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Added email regex validation (`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`) and max length (254 chars)
+
+### 72. [C] No Length Limit on externalId (ST-2.5)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Added 255-character max length validation on externalId in agent registration
+  - Added 255-character max length on companyName in developer registration
+
+### 73. [C] Certs Issuable for Inactive Agents (ST-4.3)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Changed status check from two specific checks (banned/suspended) to single `!== 'active'` check
+  - All non-active agents (banned, suspended, inactive, etc.) now blocked from receiving certificates
+
+### 74. [C] Private Keys Cached in Memory (ST-4.2)
+- **Status:** OPEN (operational — keys loaded at startup, standard practice for JWT signing)
+
+### 75. [C] Error Messages Leak Internal State (ST-11.1)
+- **Status:** OPEN (already mitigated — error handler returns generic 'Internal server error' to clients; individual routes return controlled messages)
+
+### 76. [C] Swagger UI Exposed in Production (ST-12.2)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Swagger UI now only mounted when `NODE_ENV !== 'production'`
+
+### 77. [C] In-Memory Rate Limit Store (ST-12.4)
+- **Status:** OPEN (architectural — requires Redis for multi-instance deployments)
+
+### 78. [C] Session Data Disclosure (GW-16)
+- **Status:** OPEN (architectural — nonce tracking uses in-memory Map by design)
+
+### 79. [C] Access Token Payload Not Encrypted (GW-17)
+- **Status:** OPEN (design decision — HMAC provides integrity not confidentiality; tokens are short-lived)
+
+### 80. [C] Prototype Pollution via Params (GW-18)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Added `FORBIDDEN_KEYS` set: `__proto__`, `constructor`, `prototype`
+  - Parameter validation rejects any params with forbidden key names before execution
+
+### 81. [C] Token Set Twice in fetchProtected (SDK-26) — FIXED (2026-02-24) as part of #23
+
+### 82. [C] PII Logged in Webhooks (S-4)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Shopify gateway action errors now log only `err.message` instead of full error object
+  - Error response to client returns generic 'Action execution failed' instead of raw error message
+
+### 83. [C] WP Shield Secret Quality (W-3)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - WordPress Bot Shield constructor now validates secret is at least 32 characters
+  - In production, rejects weak secrets with `wp_die()`; in debug, logs warning
+
+### 84. [C] WP Admin Settings Nonce (W-4)
+- **Status:** OPEN (requires WordPress admin page refactor)
+
+### 85. [C] TrustToken Governance Mint Risk (C-6)
+- **Status:** OPEN (requires on-chain governance change for minter additions)
+
+### 86. [C] Storage Gap Missing in UUPS (C-7)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Added `uint256[50] private __gap` to TrustToken.sol
+  - Reserves 50 storage slots for future upgrades, preventing layout collisions
+
+### 87. [C] No Pausable on DeFi Contracts (C-8)
+- **Status:** OPEN (requires on-chain contract modification)
+
+### 88. [C] Template Mock Catalog Disclosure (T-1)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Added prominent disclaimer comments in both Replit and Bolt templates
+  - Warns that mock data is for demo purposes only and must be replaced for production
+
+### 89. [C] Template No HTTPS Enforcement (T-2)
+- **Status:** OPEN (documentation item — templates already default to HTTPS station URLs)
+
+### 90. [C] RSA 2048-bit Key Size (ST-4.1)
+- **Status:** OPEN (operational configuration — key size depends on deployment setup)
+
+### 91. [X] Report Ingestion Stores Failures as 'allowed' (Codex #16)
+- **Status:** FIXED (2026-02-24, batch 5)
+  - Actions with `outcome: 'failure'` are now stored with `decision: 'denied'` instead of 'allowed'
+  - Accurately reflects the gateway's report of failed actions in the database
 
 ---
 
@@ -662,3 +735,16 @@ All TIER 3 items: **Status: OPEN**
 | 2026-02-24 | #59 | `integrations/heroku-addon/src/provision.ts` | Production warning for in-memory store |
 | 2026-02-24 | #60 | `integrations/heroku-addon/src/index.ts` | Rate limiting (30 req/min per IP) |
 | 2026-02-24 | #67 | `integrations/wordpress/includes/class-station-client.php` | WP revocation check via station verify endpoint |
+| 2026-02-24 | #35 | `src/services/reputation.ts` | Momentum gaming: dampen positive amplifier, keep negative |
+| 2026-02-24 | #39 | `src/app.ts` | CSP nonce-based scriptSrc + dashboard nonce injection route |
+| 2026-02-24 | #51 | `packages/gateway/src/behavior-tracker.ts` | Escalating penalties: repeat violations cost 1.5x (was 0.5x) |
+| 2026-02-24 | #69 | `src/middleware/auth.ts` | Timing oracle: limit fallback scope + dummy bcrypt on empty |
+| 2026-02-24 | #71, #72 | `src/routes/developers.ts` | Email regex + companyName/externalId length limits (254/255 chars) |
+| 2026-02-24 | #73 | `src/services/certificates.ts` | Only active agents get certificates (status !== 'active' blocked) |
+| 2026-02-24 | #76 | `src/app.ts` | Swagger UI disabled in production (NODE_ENV check) |
+| 2026-02-24 | #80 | `packages/gateway/src/action-registry.ts` | Prototype pollution: reject __proto__/constructor/prototype keys |
+| 2026-02-24 | #82 | `integrations/shopify/src/index.ts` | PII sanitization: log only err.message, generic client response |
+| 2026-02-24 | #83 | `integrations/wordpress/includes/class-bot-shield.php` | Secret minimum 32 chars enforced in constructor |
+| 2026-02-24 | #86 | `contracts/contracts/TrustToken.sol` | Added uint256[50] __gap for UUPS storage safety |
+| 2026-02-24 | #88 | `templates/replit-gateway/index.ts`, `templates/bolt-gateway/index.ts` | Demo data disclaimer comments |
+| 2026-02-24 | #91 | `src/services/reports.ts` | Failed actions stored as 'denied' instead of 'allowed' |

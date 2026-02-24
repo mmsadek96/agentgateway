@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
@@ -30,21 +31,32 @@ app.set('trust proxy', 1);
 initBlockchain();
 initDefiContracts();
 
+// SECURITY (#39): Generate a per-request CSP nonce to replace 'unsafe-inline' for scripts.
+// The nonce is attached to res.locals so templates/static files can reference it.
+// For inline styles, 'unsafe-inline' is kept (lower risk than scripts).
+app.use((_req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
 // Security headers
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Dashboard uses inline scripts
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-      imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
-      fontSrc: ["'self'", "https://cdn.jsdelivr.net"],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: [],
+app.use((req, res, next) => {
+  const nonce = res.locals.cspNonce;
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", `'nonce-${nonce}'`],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https://cdn.jsdelivr.net"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
     },
-  },
-}));
+  })(req, res, next);
+});
 
 // Middleware
 // CORS: Use explicit origin list from env. In development, allow localhost.
@@ -89,11 +101,27 @@ const registrationLimiter = rateLimit({
 });
 app.use(publicLimiter);
 
+// SECURITY (#39): Serve dashboard with CSP nonce injected into inline scripts.
+// This allows the nonce-based CSP to work with the dashboard's inline JavaScript.
+app.get('/dashboard.html', (_req: Request, res: Response) => {
+  const nonce = res.locals.cspNonce;
+  const dashboardPath = path.join(__dirname, 'public', 'dashboard.html');
+  try {
+    let html = fs.readFileSync(dashboardPath, 'utf-8');
+    html = html.replace('<script>', `<script nonce="${nonce}">`);
+    res.type('html').send(html);
+  } catch {
+    res.status(404).send('Dashboard not found');
+  }
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Swagger docs
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// SECURITY (#76): Swagger UI only exposed in non-production to prevent API structure disclosure.
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 // Landing page
 app.get('/', (_req: Request, res: Response) => {

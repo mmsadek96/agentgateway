@@ -28,12 +28,10 @@ export async function issueCertificate(
     throw new Error('Agent not found');
   }
 
-  if (agent.status === 'banned') {
-    throw new Error('Agent is banned — cannot issue certificate');
-  }
-
-  if (agent.status === 'suspended') {
-    throw new Error('Agent is suspended — cannot issue certificate');
+  // SECURITY (#73): Only issue certificates to active agents.
+  // Banned, suspended, and inactive agents should not receive certificates.
+  if (agent.status !== 'active') {
+    throw new Error(`Agent is ${agent.status} — only active agents can receive certificates`);
   }
 
   // Calculate current reputation

@@ -119,13 +119,23 @@ export async function calculateReputationScore(agentId: string, db: typeof prism
     }
     const avgChange = weightedSum / totalWeight;
 
-    // Time factor: events clustered in time amplify momentum
+    // SECURITY (#35): Prevent momentum gaming via rapid event clustering.
+    // Positive momentum requires sustained good behavior — dampened when clustered.
+    // Negative momentum stays sensitive to detect rapid failures.
     const oldest = recentEvents[recentEvents.length - 1].createdAt.getTime();
     const newest = recentEvents[0].createdAt.getTime();
     const spanHours = Math.max(0.1, (newest - oldest) / (1000 * 60 * 60));
 
-    // Velocity = weighted average change per event, scaled by time density
-    const velocity = avgChange * Math.min(3, 1 / spanHours); // Compress to max 3x amplifier
+    let amplifier: number;
+    if (avgChange > 0) {
+      // Positive: require events spread over at least 1 hour for full effect.
+      // Rapid positive events (< 1 hour) are dampened to prevent score inflation.
+      amplifier = Math.min(1, spanHours);
+    } else {
+      // Negative: keep up to 3x amplifier for rapid failure detection.
+      amplifier = Math.min(3, 1 / spanHours);
+    }
+    const velocity = avgChange * amplifier;
 
     // Cap momentum adjustment to [-10, +5] (punish fast, reward slow)
     momentumAdjustment = Math.max(-10, Math.min(5, Math.round(velocity)));

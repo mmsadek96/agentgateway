@@ -16,6 +16,19 @@ router.post('/register', async (req: Request, res: Response) => {
       return;
     }
 
+    // SECURITY (#71): Validate email format to prevent malformed data
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (typeof email !== 'string' || email.length > 254 || !EMAIL_REGEX.test(email)) {
+      res.status(400).json({ success: false, error: 'Invalid email format' });
+      return;
+    }
+
+    // SECURITY (#72): Validate companyName length
+    if (typeof companyName !== 'string' || companyName.length > 255) {
+      res.status(400).json({ success: false, error: 'Company name must be 255 characters or fewer' });
+      return;
+    }
+
     // Check if email already exists
     const existing = await prisma.developer.findUnique({ where: { email } });
     if (existing) {
@@ -119,6 +132,12 @@ router.post('/agents', authenticateApiKey, async (req: AuthenticatedRequest, res
 
     if (!externalId) {
       res.status(400).json({ success: false, error: 'External ID required' });
+      return;
+    }
+
+    // SECURITY (#72): Validate externalId length and format
+    if (typeof externalId !== 'string' || externalId.length > 255 || externalId.length === 0) {
+      res.status(400).json({ success: false, error: 'External ID must be a non-empty string of 255 characters or fewer' });
       return;
     }
 

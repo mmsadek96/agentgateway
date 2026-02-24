@@ -71,13 +71,15 @@ export async function submitReport(report: GatewayReportRequest & { developerId?
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Create all action records
+      // SECURITY (#91): Create action records with correct decision status.
+      // Previously all actions were stored as 'allowed' regardless of outcome.
+      // Now failures are stored as 'denied' to accurately reflect gateway reports.
       for (const action of actions) {
         await tx.action.create({
           data: {
             agentId,
             actionType: action.actionType,
-            decision: 'allowed',
+            decision: action.outcome === 'success' ? 'allowed' : 'denied',
             reason: `Gateway ${gatewayId} reported ${action.outcome}`,
             metadata: (action.metadata || {}) as any
           }

@@ -10,6 +10,9 @@ const MAX_STRING_LENGTH = 10_000;  // Max length for any single string parameter
 const MAX_OBJECT_DEPTH = 5;        // Max nesting depth for object/array parameters
 const MAX_TOTAL_PARAMS = 50;       // Max total number of parameters (including nested keys)
 
+// SECURITY (#80): Prototype pollution guard — reject keys that target the prototype chain.
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /**
  * Manages action definitions and handles execution.
  * Validates parameters, checks score thresholds, and runs handler functions.
@@ -109,10 +112,17 @@ export class ActionRegistry {
       }
     }
 
+    // SECURITY (#80): Check for prototype pollution keys
+    for (const paramName of Object.keys(params)) {
+      if (FORBIDDEN_KEYS.has(paramName)) {
+        errors.push(`Forbidden parameter name: "${paramName}"`);
+      }
+    }
+
     // Check for unknown parameters
     const knownParams = new Set(Object.keys(action.parameters));
     for (const paramName of Object.keys(params)) {
-      if (!knownParams.has(paramName)) {
+      if (!knownParams.has(paramName) && !FORBIDDEN_KEYS.has(paramName)) {
         errors.push(`Unknown parameter "${paramName}"`);
       }
     }

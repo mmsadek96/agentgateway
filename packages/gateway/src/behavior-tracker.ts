@@ -210,11 +210,12 @@ export class BehaviorTracker {
       }
     }
 
-    // For repeated violations of the SAME type, apply reduced penalties
+    // SECURITY (#51): Escalating penalties for repeated violations of the SAME type.
+    // Each repeat costs MORE than the base penalty (1.5x), not less.
+    // This prevents attackers from repeatedly triggering the same violation at low cost.
     for (const flag of newFlags) {
       if (!trulyNewFlags.has(flag) && flag !== 'scope_violation') {
-        // Escalating penalty: each repeat costs more
-        session.behaviorScore = Math.max(0, session.behaviorScore - Math.floor(this.config.violationPenalty / 2));
+        session.behaviorScore = Math.max(0, session.behaviorScore - Math.ceil(this.config.violationPenalty * 1.5));
       }
     }
 

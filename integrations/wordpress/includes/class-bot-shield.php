@@ -32,6 +32,16 @@ class AgentTrust_Bot_Shield {
      * @param array  $config     Optional configuration overrides
      */
     public function __construct( $secret, $gateway_id = '', $config = array() ) {
+        // SECURITY (#83): Enforce minimum secret length for HMAC-SHA256 entropy.
+        if ( empty( $secret ) || strlen( $secret ) < 32 ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'AgentTrust Bot Shield: Secret must be at least 32 characters for adequate HMAC-SHA256 security.' );
+            }
+            // In production, reject weak secrets; in debug, warn but continue
+            if ( ! ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
+                wp_die( 'AgentTrust Bot Shield: Secret must be at least 32 characters.', 'Configuration Error', array( 'response' => 500 ) );
+            }
+        }
         $this->secret     = $secret;
         $this->gateway_id = $gateway_id;
         $this->config     = wp_parse_args( $config, array(
