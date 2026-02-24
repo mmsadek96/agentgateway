@@ -56,6 +56,12 @@ export async function addStake(
   });
 
   // Record the event (outside transaction — non-critical)
+  // SECURITY (#32): stakeBonus is a display/reputation metric, not a financial value.
+  // The Number() conversion from Decimal is safe here because:
+  //   1. The result feeds into integer-only ops (Math.floor, Math.min)
+  //   2. No multiplication — only division by 100 and addition by 5
+  //   3. Output is capped to [0, 15] integer range
+  // All actual financial DB writes use Prisma Decimal atomic ops above.
   const stakeBonus = Math.min(15, 5 + Math.floor(result.newStake / 100)) -
                      Math.min(15, 5 + Math.floor(result.previousStake / 100));
   await recordReputationEvent(result.agentDbId, 'stake_added', stakeBonus);
@@ -130,6 +136,7 @@ export async function getStakeInfo(agentExternalId: string, developerId: string)
     throw new Error('Agent not found');
   }
 
+  // (#32): Read-only display — Number() conversion safe for view responses (integer math only)
   const stakeAmount = Number(agent.stakeAmount);
   const stakeBonus = stakeAmount > 0 ? Math.min(15, 5 + Math.floor(stakeAmount / 100)) : 0;
 

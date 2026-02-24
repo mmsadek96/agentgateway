@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IAgentRegistry.sol";
@@ -22,7 +23,8 @@ import "./interfaces/IAgentRegistry.sol";
 contract ReputationMarket is
     OwnableUpgradeable,
     UUPSUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -90,6 +92,7 @@ contract ReputationMarket is
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        __Pausable_init();
 
         trustToken = IERC20(_trustToken);
         agentRegistry = IAgentRegistry(_agentRegistry);
@@ -109,7 +112,7 @@ contract ReputationMarket is
         bytes32 agentId,
         uint16 targetScore,
         uint40 expiresAt
-    ) external onlyOwner returns (uint256 marketId) {
+    ) external onlyOwner whenNotPaused returns (uint256 marketId) {
         if (expiresAt <= uint40(block.timestamp)) revert InvalidExpiry();
         uint40 duration = expiresAt - uint40(block.timestamp);
         if (duration > MAX_MARKET_DURATION) revert MaxDurationExceeded(duration, MAX_MARKET_DURATION);
@@ -138,7 +141,7 @@ contract ReputationMarket is
      * @param amount $TRUST amount to bet
      * @param bettor Address that owns the position
      */
-    function betYes(uint256 marketId, uint256 amount, address bettor) external onlyOwner nonReentrant {
+    function betYes(uint256 marketId, uint256 amount, address bettor) external onlyOwner nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         Market storage m = markets[marketId];
         if (m.settled) revert MarketAlreadySettled(marketId);
@@ -155,7 +158,7 @@ contract ReputationMarket is
     /**
      * @notice Place a NO bet (agent will NOT reach target score).
      */
-    function betNo(uint256 marketId, uint256 amount, address bettor) external onlyOwner nonReentrant {
+    function betNo(uint256 marketId, uint256 amount, address bettor) external onlyOwner nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         Market storage m = markets[marketId];
         if (m.settled) revert MarketAlreadySettled(marketId);
@@ -273,6 +276,11 @@ contract ReputationMarket is
         if (_recipient == address(0)) revert ZeroAddress();
         feeRecipient = _recipient;
     }
+
+    // ─── Emergency Pause (#87) ───
+
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
 
     // ─── UUPS ───
 

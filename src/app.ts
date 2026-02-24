@@ -19,7 +19,7 @@ import marketRoutes from './routes/markets';
 import insuranceRoutes from './routes/insurance';
 import vouchNftRoutes from './routes/vouchNft';
 import governanceRoutes from './routes/governance';
-import { initBlockchain } from './services/blockchain';
+import { initBlockchain, getBlockchainQueueStats } from './services/blockchain';
 import { initDefiContracts } from './services/defi';
 
 const app = express();
@@ -128,9 +128,14 @@ app.get('/', (_req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Health check
+// Health check (#34: include blockchain retry queue stats for monitoring)
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const blockchainQueue = getBlockchainQueueStats();
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    blockchain: { pendingRetries: blockchainQueue.pending }
+  });
 });
 
 // Routes — apply per-API-key rate limiting to authenticated endpoints (#14, #28)

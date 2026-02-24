@@ -11,6 +11,12 @@ const STATION_API_KEY = process.env.STATION_API_KEY || '';
 const AGENT_ID = process.env.AGENT_ID || '';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+// SECURITY (#89): Warn if STATION_URL is not HTTPS. Certificates and API keys
+// are sent to the station — HTTP exposes them to network interception.
+if (STATION_URL.startsWith('http://') && !STATION_URL.includes('localhost')) {
+  console.warn('[SECURITY] STATION_URL uses HTTP — credentials will be sent unencrypted. Use HTTPS in production.');
+}
+
 // ─── Mock Product Catalog ───
 // SECURITY (#88): This is DEMO DATA for template purposes only.
 // Replace with your actual product database or API before deploying to production.

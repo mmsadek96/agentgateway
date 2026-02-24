@@ -36,6 +36,10 @@ contract TrustToken is
     /// @notice Maximum supply: 1 billion TRUST
     uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10**18;
 
+    /// @notice SECURITY (#85): Maximum tokens mintable per transaction (even by owner).
+    /// Limits blast radius if owner key is compromised. Adjustable via setMaxMintPerTx().
+    uint256 public maxMintPerTx;
+
     /// @notice Addresses approved to mint (e.g., StakingVault for staking rewards)
     mapping(address => bool) public minters;
 
@@ -49,12 +53,14 @@ contract TrustToken is
     event MinterAdded(address indexed minter, uint256 allowance);
     event MinterRemoved(address indexed minter);
     event MinterAllowanceUpdated(address indexed minter, uint256 newAllowance);
+    event MaxMintPerTxUpdated(uint256 oldMax, uint256 newMax);
 
     // ─── Errors ───
 
     error ExceedsMaxSupply(uint256 requested, uint256 remaining);
     error NotMinter(address caller);
     error ExceedsMinterAllowance(address minter, uint256 requested, uint256 remaining);
+    error ExceedsMaxMintPerTx(uint256 requested, uint256 maxPerTx);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -68,6 +74,7 @@ contract TrustToken is
         __ERC20Votes_init();
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
+        maxMintPerTx = 10_000_000 * 10**18; // 10M TRUST default (#85)
     }
 
     // ─── Minting ───
@@ -81,11 +88,16 @@ contract TrustToken is
         if (msg.sender != owner() && !minters[msg.sender]) {
             revert NotMinter(msg.sender);
         }
+        // SECURITY (#85): Per-transaction cap applies to ALL callers including owner.
+        // Limits blast radius of key compromise — attacker needs multiple txs to drain.
+        if (maxMintPerTx > 0 && amount > maxMintPerTx) {
+            revert ExceedsMaxMintPerTx(amount, maxMintPerTx);
+        }
         if (totalSupply() + amount > MAX_SUPPLY) {
             revert ExceedsMaxSupply(amount, MAX_SUPPLY - totalSupply());
         }
 
-        // M-5 fix: Track minter allowance (owner is unrestricted)
+        // M-5 fix: Track minter allowance (owner is unrestricted beyond per-tx cap)
         if (msg.sender != owner()) {
             uint256 remaining = minterAllowance[msg.sender] - minterMinted[msg.sender];
             if (amount > remaining) {
@@ -128,6 +140,16 @@ contract TrustToken is
         minters[minter] = false;
         minterAllowance[minter] = 0;
         emit MinterRemoved(minter);
+    }
+
+    /**
+     * @notice Update the per-transaction mint cap. Set to 0 to disable the cap.
+     * @param _maxPerTx New maximum tokens mintable in a single transaction
+     */
+    function setMaxMintPerTx(uint256 _maxPerTx) external onlyOwner {
+        uint256 oldMax = maxMintPerTx;
+        maxMintPerTx = _maxPerTx;
+        emit MaxMintPerTxUpdated(oldMax, _maxPerTx);
     }
 
     // ─── View ───

@@ -26,19 +26,58 @@ const HOST = process.env.HOST || "localhost";
 const SHIELD_SECRET = process.env.AGENTTRUST_SHIELD_SECRET || crypto.randomBytes(32).toString("hex");
 
 // ---------------------------------------------------------------------------
-// In-memory session store  (shop domain -> access token)
+// SECURITY (#56): Encrypted in-memory session store (shop domain -> encrypted token)
+// Tokens are AES-256-GCM encrypted at rest in memory. A heap dump will not
+// reveal plaintext Shopify access tokens. The encryption key is process-local
+// and regenerated on each restart.
 // ---------------------------------------------------------------------------
 
-const shopTokens: Map<string, string> = new Map();
+const TOKEN_ENCRYPTION_KEY = crypto.randomBytes(32); // 256-bit key, per-process
+
+/**
+ * Encrypt a string value with AES-256-GCM.
+ */
+function encryptToken(plaintext: string): string {
+  const iv = crypto.randomBytes(12); // 96-bit IV for GCM
+  const cipher = crypto.createCipheriv("aes-256-gcm", TOKEN_ENCRYPTION_KEY, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  // Format: iv:tag:ciphertext (all hex)
+  return `${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+/**
+ * Decrypt a string value encrypted with encryptToken().
+ */
+function decryptToken(encrypted: string): string {
+  const [ivHex, tagHex, cipherHex] = encrypted.split(":");
+  const iv = Buffer.from(ivHex, "hex");
+  const tag = Buffer.from(tagHex, "hex");
+  const ciphertext = Buffer.from(cipherHex, "hex");
+  const decipher = crypto.createDecipheriv("aes-256-gcm", TOKEN_ENCRYPTION_KEY, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+}
+
+const shopTokens: Map<string, string> = new Map(); // Stores encrypted tokens
+
+/**
+ * Store a Shopify access token (encrypted).
+ */
+function storeShopToken(shop: string, plainToken: string): void {
+  shopTokens.set(shop, encryptToken(plainToken));
+}
 
 /**
  * Retrieve (or throw) a ShopifyClient for a given shop domain.
+ * Decrypts the stored token on-the-fly.
  */
 function getClientForShop(shop: string): ShopifyClient {
-  const token = shopTokens.get(shop);
-  if (!token) {
+  const encrypted = shopTokens.get(shop);
+  if (!encrypted) {
     throw new Error(`No access token stored for shop: ${shop}`);
   }
+  const token = decryptToken(encrypted);
   return createShopifyClient(shop, token);
 }
 
@@ -166,8 +205,8 @@ app.get("/auth/callback", async (req: Request, res: Response) => {
       scope: string;
     };
 
-    // Persist token in memory
-    shopTokens.set(shop, tokenData.access_token);
+    // Persist token in memory (encrypted — #56)
+    storeShopToken(shop, tokenData.access_token);
     console.log(`[Auth] Shop installed: ${shop} (scopes: ${tokenData.scope})`);
 
     // Register webhooks for the newly-authenticated shop

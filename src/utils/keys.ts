@@ -32,8 +32,12 @@ export function loadPublicKey(): string {
 }
 
 export function generateKeyPair(): { publicKey: string; privateKey: string } {
+  // SECURITY (#90): Use RSA-4096 for stronger key strength. RSA-2048 is adequate
+  // through ~2030 per NIST, but 4096-bit provides longer-term security margin.
+  // NOTE: Existing deployed keys at 2048-bit still work. Operators should regenerate
+  // keys to get the stronger size: `npm run generate-keys`
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048,
+    modulusLength: 4096,
     publicKeyEncoding: { type: 'spki', format: 'pem' },
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
   });

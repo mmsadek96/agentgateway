@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IAgentRegistry.sol";
@@ -28,7 +29,8 @@ contract StakingVault is
     ERC20Upgradeable,
     OwnableUpgradeable,
     UUPSUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -84,6 +86,7 @@ contract StakingVault is
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        __Pausable_init();
 
         trustToken = IERC20(_trustToken);
         agentRegistry = IAgentRegistry(_agentRegistry);
@@ -98,7 +101,7 @@ contract StakingVault is
      * @param agentId The agent's bytes32 identifier
      * @param amount Amount of $TRUST to stake (18 decimals)
      */
-    function stake(bytes32 agentId, uint256 amount) external onlyOwner nonReentrant {
+    function stake(bytes32 agentId, uint256 amount) external onlyOwner nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         if (!agentRegistry.isActive(agentId)) revert AgentNotActive(agentId);
 
@@ -120,7 +123,7 @@ contract StakingVault is
      * @param agentId The agent's bytes32 identifier
      * @param amount Amount to unstake
      */
-    function requestUnstake(bytes32 agentId, uint256 amount) external onlyOwner {
+    function requestUnstake(bytes32 agentId, uint256 amount) external onlyOwner whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         StakeInfo storage info = agentStakes[agentId];
 
@@ -137,7 +140,7 @@ contract StakingVault is
      * @notice Complete unstake after cooldown period. Burns stTRUST, returns $TRUST.
      * @param agentId The agent's bytes32 identifier
      */
-    function completeUnstake(bytes32 agentId) external onlyOwner nonReentrant {
+    function completeUnstake(bytes32 agentId) external onlyOwner nonReentrant whenNotPaused {
         StakeInfo storage info = agentStakes[agentId];
         if (info.unstakeRequestAmount == 0) revert NoPendingUnstake(agentId);
 
@@ -243,6 +246,14 @@ contract StakingVault is
         insurancePool = _pool;
         emit InsurancePoolUpdated(oldPool, _pool);
     }
+
+    // ─── Emergency Pause (#87) ───
+
+    /// @notice Pause all state-changing operations (emergency stop).
+    function pause() external onlyOwner { _pause(); }
+
+    /// @notice Unpause operations.
+    function unpause() external onlyOwner { _unpause(); }
 
     // ─── UUPS ───
 

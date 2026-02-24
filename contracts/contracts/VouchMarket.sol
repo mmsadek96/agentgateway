@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "./interfaces/IAgentRegistry.sol";
 
 /**
@@ -29,7 +30,8 @@ import "./interfaces/IAgentRegistry.sol";
 contract VouchMarket is
     ERC721Upgradeable,
     OwnableUpgradeable,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    PausableUpgradeable
 {
     IAgentRegistry public agentRegistry;
 
@@ -92,6 +94,7 @@ contract VouchMarket is
         __ERC721_init("AgentTrust Vouch", "VOUCH");
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
+        __Pausable_init();
 
         agentRegistry = IAgentRegistry(_agentRegistry);
     }
@@ -110,7 +113,7 @@ contract VouchMarket is
         bytes32 vouchedAgentId,
         uint8 weight,
         address recipient
-    ) external onlyOwner returns (uint256 tokenId) {
+    ) external onlyOwner whenNotPaused returns (uint256 tokenId) {
         // Validation
         if (voucherAgentId == vouchedAgentId) revert CannotVouchSelf(voucherAgentId);
         if (weight == 0 || weight > 5) revert InvalidWeight(weight);
@@ -336,6 +339,11 @@ contract VouchMarket is
         }
         return string(result);
     }
+
+    // ─── Emergency Pause (#87) ───
+
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
 
     // ─── UUPS ───
 

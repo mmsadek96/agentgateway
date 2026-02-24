@@ -56,6 +56,67 @@ let certificateRegistry: Contract | null = null;
 let reputationLedger: Contract | null = null;
 let initialized = false;
 
+// ─── SECURITY (#34): Retry Queue ───
+// Failed blockchain writes are queued for retry instead of being silently lost.
+// The queue is in-memory (acceptable — the DB is the source of truth, blockchain
+// is supplementary). A periodic flush attempts retries up to MAX_RETRIES times.
+interface PendingOp {
+  fn: () => Promise<string | null>;
+  description: string;
+  attempts: number;
+  firstAttempt: number;
+}
+const MAX_RETRIES = 3;
+const RETRY_INTERVAL_MS = 30_000; // 30 seconds
+const MAX_QUEUE_SIZE = 500;
+const retryQueue: PendingOp[] = [];
+let retryTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Enqueue a failed blockchain operation for retry.
+ */
+function enqueueRetry(fn: () => Promise<string | null>, description: string): void {
+  if (retryQueue.length >= MAX_QUEUE_SIZE) {
+    console.warn(`[Blockchain] Retry queue full (${MAX_QUEUE_SIZE}) — dropping: ${description}`);
+    return;
+  }
+  retryQueue.push({ fn, description, attempts: 1, firstAttempt: Date.now() });
+}
+
+/**
+ * Flush the retry queue — attempt pending operations.
+ */
+async function flushRetryQueue(): Promise<void> {
+  if (retryQueue.length === 0) return;
+
+  const batch = retryQueue.splice(0, retryQueue.length);
+  const requeue: PendingOp[] = [];
+
+  for (const op of batch) {
+    try {
+      await op.fn();
+      console.log(`[Blockchain] Retry succeeded: ${op.description} (attempt ${op.attempts + 1})`);
+    } catch (err: any) {
+      op.attempts++;
+      if (op.attempts < MAX_RETRIES) {
+        requeue.push(op);
+      } else {
+        console.error(`[Blockchain] Permanently failed after ${op.attempts} attempts: ${op.description} — ${err?.message || err}`);
+      }
+    }
+  }
+
+  // Put failed items back
+  retryQueue.push(...requeue);
+}
+
+/**
+ * Get retry queue stats for health monitoring.
+ */
+export function getBlockchainQueueStats(): { pending: number; maxSize: number } {
+  return { pending: retryQueue.length, maxSize: MAX_QUEUE_SIZE };
+}
+
 /**
  * Initialize blockchain connection.
  * Silently fails if no private key — system works without blockchain.
@@ -75,6 +136,20 @@ export function initBlockchain(): boolean {
     reputationLedger = new Contract(REPUTATION_LEDGER_ADDRESS, REPUTATION_LEDGER_ABI, wallet);
     initialized = true;
     console.log(`[Blockchain] Connected to Base mainnet — wallet: ${wallet.address}`);
+
+    // Start retry queue flush interval (#34)
+    if (!retryTimer) {
+      retryTimer = setInterval(() => {
+        flushRetryQueue().catch((err) =>
+          console.error('[Blockchain] Retry flush error:', err)
+        );
+      }, RETRY_INTERVAL_MS);
+      // Ensure the interval doesn't keep the process alive
+      if (retryTimer && typeof retryTimer === 'object' && 'unref' in retryTimer) {
+        (retryTimer as NodeJS.Timeout).unref();
+      }
+    }
+
     return true;
   } catch (err) {
     console.error('[Blockchain] Failed to initialize:', err);
@@ -138,8 +213,12 @@ export async function registerAgentOnChain(
     console.log(`[Blockchain] Agent registered on-chain: ${agentUuid} (tx: ${tx.hash})`);
     return tx.hash;
   } catch (err: any) {
-    // Don't fail the API call if blockchain write fails
+    // Don't fail the API call if blockchain write fails — enqueue for retry (#34)
     console.error(`[Blockchain] Failed to register agent on-chain:`, err.message || err);
+    enqueueRetry(
+      () => registerAgentOnChain(agentUuid, externalId, developerEmail),
+      `registerAgent(${agentUuid})`
+    );
     return null;
   }
 }
@@ -167,6 +246,10 @@ export async function updateReputationOnChain(
     return tx.hash;
   } catch (err: any) {
     console.error(`[Blockchain] Failed to update reputation:`, err.message || err);
+    enqueueRetry(
+      () => updateReputationOnChain(agentUuid, newScore, totalActions, successRate),
+      `updateReputation(${agentUuid})`
+    );
     return null;
   }
 }
@@ -189,6 +272,10 @@ export async function changeStatusOnChain(
     return tx.hash;
   } catch (err: any) {
     console.error(`[Blockchain] Failed to change status:`, err.message || err);
+    enqueueRetry(
+      () => changeStatusOnChain(agentUuid, newStatus, reason),
+      `changeStatus(${agentUuid}, ${newStatus})`
+    );
     return null;
   }
 }
@@ -210,6 +297,10 @@ export async function slashAgentOnChain(
     return tx.hash;
   } catch (err: any) {
     console.error(`[Blockchain] Failed to slash agent:`, err.message || err);
+    enqueueRetry(
+      () => slashAgentOnChain(agentUuid, scorePenalty, reason),
+      `slashAgent(${agentUuid})`
+    );
     return null;
   }
 }
@@ -250,6 +341,10 @@ export async function issueCertificateOnChain(
     return tx.hash;
   } catch (err: any) {
     console.error(`[Blockchain] Failed to issue certificate:`, err.message || err);
+    enqueueRetry(
+      () => issueCertificateOnChain(certJti, agentUuid, score, scope, expiresAtDate),
+      `issueCertificate(${certJti})`
+    );
     return null;
   }
 }
@@ -269,6 +364,10 @@ export async function revokeCertificateOnChain(
     return tx.hash;
   } catch (err: any) {
     console.error(`[Blockchain] Failed to revoke certificate:`, err.message || err);
+    enqueueRetry(
+      () => revokeCertificateOnChain(certJti),
+      `revokeCertificate(${certJti})`
+    );
     return null;
   }
 }
@@ -345,6 +444,10 @@ export async function logReputationEventOnChain(
     return tx.hash;
   } catch (err: any) {
     console.error(`[Blockchain] Failed to log reputation event:`, err.message || err);
+    enqueueRetry(
+      () => logReputationEventOnChain(agentUuid, eventType, scoreBefore, scoreAfter, evidenceDescription),
+      `logReputationEvent(${agentUuid})`
+    );
     return null;
   }
 }

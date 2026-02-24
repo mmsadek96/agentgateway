@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IAgentRegistry.sol";
@@ -26,7 +27,8 @@ import "./interfaces/IAgentRegistry.sol";
 contract InsurancePool is
     OwnableUpgradeable,
     UUPSUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -113,6 +115,7 @@ contract InsurancePool is
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        __Pausable_init();
 
         trustToken = IERC20(_trustToken);
         agentRegistry = IAgentRegistry(_agentRegistry);
@@ -128,7 +131,7 @@ contract InsurancePool is
      * @param agentId The agent's bytes32 identifier
      * @param amount $TRUST amount to deposit (18 decimals)
      */
-    function depositCollateral(bytes32 agentId, uint256 amount) external onlyOwner nonReentrant {
+    function depositCollateral(bytes32 agentId, uint256 amount) external onlyOwner nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
 
         trustToken.safeTransferFrom(msg.sender, address(this), amount);
@@ -143,7 +146,7 @@ contract InsurancePool is
      * @param agentId The agent's bytes32 identifier
      * @param amount $TRUST amount to withdraw
      */
-    function withdrawCollateral(bytes32 agentId, uint256 amount) external onlyOwner nonReentrant {
+    function withdrawCollateral(bytes32 agentId, uint256 amount) external onlyOwner nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         if (amount > agentCollateral[agentId]) {
             revert InsufficientCollateral(amount, agentCollateral[agentId]);
@@ -179,7 +182,7 @@ contract InsurancePool is
         uint256 coverageAmount,
         uint16 triggerScore,
         uint40 expiresAt
-    ) external onlyOwner nonReentrant returns (uint256 policyId) {
+    ) external onlyOwner nonReentrant whenNotPaused returns (uint256 policyId) {
         if (coverageAmount == 0) revert ZeroAmount();
         if (expiresAt <= uint40(block.timestamp)) revert InvalidExpiry();
         uint40 duration = expiresAt - uint40(block.timestamp);
@@ -355,6 +358,11 @@ contract InsurancePool is
         if (_recipient == address(0)) revert ZeroAddress();
         feeRecipient = _recipient;
     }
+
+    // ─── Emergency Pause (#87) ───
+
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
 
     // ─── UUPS ───
 

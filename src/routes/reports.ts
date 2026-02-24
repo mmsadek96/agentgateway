@@ -59,9 +59,22 @@ router.post('/', authenticateApiKey, async (req: AuthenticatedRequest, res: Resp
       data: result
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Report submission failed';
     console.error('Report error:', error);
-    res.status(400).json({ success: false, error: message });
+    // SECURITY (#75): Only return known safe error messages to the client.
+    // Raw error.message may leak Prisma internals, SQL details, or stack traces.
+    const knownErrors = [
+      'Agent not found',
+      'You can only submit reports for your own agents',
+      'Developer authentication required to submit reports',
+      'Certificate not found — invalid report',
+      'Certificate does not belong to this agent',
+      'Report already submitted for this certificate and gateway',
+    ];
+    const rawMessage = error instanceof Error ? error.message : '';
+    const safeMessage = knownErrors.includes(rawMessage)
+      ? rawMessage
+      : 'Report submission failed';
+    res.status(400).json({ success: false, error: safeMessage });
   }
 });
 

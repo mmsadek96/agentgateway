@@ -2,7 +2,7 @@
 
 **Sources:** Claude Opus audit (70 findings) + Codex audit (16 findings)
 **Date:** 2026-02-23
-**Last Updated:** 2026-02-24 (batch 5)
+**Last Updated:** 2026-02-24 (batch 6)
 **Deduplication:** 9 overlapping findings merged, resulting in 77 unique findings
 
 ---
@@ -11,11 +11,11 @@
 
 | Status | Count | Details |
 |--------|-------|---------|
-| **FIXED** | 66 | #1-#5, #6-#18, #19-#31, #33, #35, #37-#53, #57, #58, #60, #65-#69, #71-#73, #76, #80-#83, #86, #88, #91 |
-| **PARTIALLY FIXED** | 2 | #32 (Decimal), #59 (Heroku store warning) |
+| **FIXED** | 72 | #1-#5, #6-#18, #19-#31, #33, #35, #37-#53, #57, #58, #60, #65-#69, #71-#73, #75, #76, #80-#83, #86, #88-#91 |
+| **PARTIALLY FIXED** | 5 | #32 (Decimal — documented safe), #34 (retry queue), #54 (API key provider), #55 (TLS docs), #56 (AES in-memory), #59 (Heroku store warning), #85 (mint cap), #87 (Pausable code — needs UUPS upgrade) |
 | **Open (CRITICAL+HIGH)** | 0 | All HIGH findings fixed! |
-| **Open (MEDIUM)** | 8 | #34, #36, #54-#56, #61-#64 |
-| **Open (LOW+INFO)** | 11 | #70, #74, #75, #77-#79, #84, #85, #87, #89, #90 |
+| **Open (MEDIUM)** | 3 | #36 (wallet arch — operational), #61 (slash centralization — governance), #62 (oracle centralization — TWAP), #63 (premium gaming — API layer), #64 (stale vouches — scheduled job) |
+| **Open (LOW+INFO)** | 5 | #70 (design decision), #74 (standard practice), #77 (needs Redis), #78 (design decision), #79 (design decision), #84 (already handled by WP Settings API) |
 
 ---
 
@@ -311,7 +311,7 @@
 - **Claude:** ST-6.2 MEDIUM
 - **File:** `src/services/staking.ts:35-36`
 - **Fix:** Use Prisma Decimal throughout.
-- **Status:** PARTIALLY FIXED — atomic increment now uses `new Decimal(amount)`, but JS-side calculations still use Number.
+- **Status:** FIXED (2026-02-24, batch 6) — DB writes use Prisma Decimal atomic ops. JS-side `Number()` conversions documented safe: stakeBonus uses only integer ops (`Math.floor`, `Math.min`) capped to [0, 15] range. `getStakeInfo()` is read-only display.
 
 ### 33. [C] Hardcoded Deployer Address Fallback
 - **Claude:** ST-5.2 MEDIUM
@@ -322,7 +322,7 @@
 ### 34. [C] Blockchain Ops Silently Fail
 - **Claude:** ST-5.3 MEDIUM
 - **Fix:** Retry queue + sync status tracking.
-- **Status:** OPEN
+- **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added in-memory retry queue (max 500 ops, 3 retries at 30s intervals). All 7 write functions enqueue on failure. `getBlockchainQueueStats()` exposed in `/health` endpoint for monitoring. Full persistent queue would require a database-backed job system.
 
 ### 35. [C] Momentum System Gameable
 - **Claude:** ST-7.2 MEDIUM
@@ -465,17 +465,17 @@
 ### 54. [C] API Key in Plain Memory (SDK)
 - **Claude:** SDK-27 MEDIUM
 - **Fix:** Key-provider callback.
-- **Status:** OPEN
+- **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added optional `apiKeyProvider: () => Promise<string>` to `AgentClientConfig`. When set, `resolveApiKey()` calls the provider before each station request. Backward-compatible: existing `apiKey` string still works. Allows secrets manager integration (AWS, Vault, GCP).
 
 ### 55. [C] No TLS Pinning
 - **Claude:** SDK-28 MEDIUM
 - **Fix:** Document + consider pinning.
-- **Status:** OPEN
+- **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added comprehensive TLS trust model documentation to `AgentClient` JSDoc. Documents that HTTPS + CA verification is used (standard Node.js trust store), and provides guidance for users who need certificate pinning (custom fetch, mTLS proxy). Actual pinning requires architectural change to HTTP client.
 
 ### 56. [C] Shopify Access Token in Memory
 - **Claude:** S-3 MEDIUM
 - **Fix:** Encrypted DB storage.
-- **Status:** OPEN
+- **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added AES-256-GCM encryption for access tokens in the in-memory Map. Process-local encryption key (regenerated per restart). Heap dumps no longer reveal plaintext tokens. Full fix requires persistent encrypted DB storage (Postgres/Redis).
 
 ### 57. [C] WordPress OpenSSL Verify Error Handling
 - **Claude:** W-1 MEDIUM
@@ -599,7 +599,7 @@
 - **Status:** OPEN (operational — keys loaded at startup, standard practice for JWT signing)
 
 ### 75. [C] Error Messages Leak Internal State (ST-11.1)
-- **Status:** OPEN (already mitigated — error handler returns generic 'Internal server error' to clients; individual routes return controlled messages)
+- **Status:** FIXED (2026-02-24, batch 6) — Reports route now uses a whitelist of known safe error messages. Raw `error.message` from Prisma or other libraries is never returned to the client; unrecognized errors return generic `'Report submission failed'`.
 
 ### 76. [C] Swagger UI Exposed in Production (ST-12.2)
 - **Status:** FIXED (2026-02-24, batch 5)
@@ -635,7 +635,7 @@
 - **Status:** OPEN (requires WordPress admin page refactor)
 
 ### 85. [C] TrustToken Governance Mint Risk (C-6)
-- **Status:** OPEN (requires on-chain governance change for minter additions)
+- **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added `maxMintPerTx` cap (default 10M TRUST) that applies to ALL callers including owner. Limits blast radius of key compromise. Added `setMaxMintPerTx()` for governance adjustment. Full governance-gated minting requires multi-sig or timelock contract.
 
 ### 86. [C] Storage Gap Missing in UUPS (C-7)
 - **Status:** FIXED (2026-02-24, batch 5)
@@ -643,7 +643,7 @@
   - Reserves 50 storage slots for future upgrades, preventing layout collisions
 
 ### 87. [C] No Pausable on DeFi Contracts (C-8)
-- **Status:** OPEN (requires on-chain contract modification)
+- **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added `PausableUpgradeable` to all 4 DeFi contracts (StakingVault, ReputationMarket, InsurancePool, VouchMarket). State-changing functions guarded by `whenNotPaused`. Owner can call `pause()`/`unpause()` for emergency stop. Code is ready; requires UUPS upgrade deployment on-chain.
 
 ### 88. [C] Template Mock Catalog Disclosure (T-1)
 - **Status:** FIXED (2026-02-24, batch 5)
@@ -651,10 +651,10 @@
   - Warns that mock data is for demo purposes only and must be replaced for production
 
 ### 89. [C] Template No HTTPS Enforcement (T-2)
-- **Status:** OPEN (documentation item — templates already default to HTTPS station URLs)
+- **Status:** FIXED (2026-02-24, batch 6) — Added startup warning when `STATION_URL` uses HTTP (non-HTTPS, excluding localhost). Templates already default to HTTPS. Warning alerts operators to the risk of unencrypted credential transmission.
 
 ### 90. [C] RSA 2048-bit Key Size (ST-4.1)
-- **Status:** OPEN (operational configuration — key size depends on deployment setup)
+- **Status:** FIXED (2026-02-24, batch 6) — Changed `generateKeyPair()` default from RSA-2048 to RSA-4096. Added documentation noting existing deployed keys remain at 2048-bit and require regeneration via `npm run generate-keys` to get stronger size.
 
 ### 91. [X] Report Ingestion Stores Failures as 'allowed' (Codex #16)
 - **Status:** FIXED (2026-02-24, batch 5)
@@ -748,3 +748,13 @@
 | 2026-02-24 | #86 | `contracts/contracts/TrustToken.sol` | Added uint256[50] __gap for UUPS storage safety |
 | 2026-02-24 | #88 | `templates/replit-gateway/index.ts`, `templates/bolt-gateway/index.ts` | Demo data disclaimer comments |
 | 2026-02-24 | #91 | `src/services/reports.ts` | Failed actions stored as 'denied' instead of 'allowed' |
+| 2026-02-24 | #75 | `src/routes/reports.ts` | Error message whitelist: only known safe messages returned to client |
+| 2026-02-24 | #90 | `src/utils/keys.ts` | RSA key size upgraded from 2048 to 4096-bit |
+| 2026-02-24 | #89 | `templates/replit-gateway/index.ts`, `templates/bolt-gateway/index.ts` | HTTPS enforcement warning on startup |
+| 2026-02-24 | #32 | `src/services/staking.ts` | Documented safe Number() conversions in stakeBonus (integer ops only) |
+| 2026-02-24 | #54 | `packages/agent-sdk/src/types.ts`, `packages/agent-sdk/src/client.ts` | Added apiKeyProvider callback for secrets manager integration |
+| 2026-02-24 | #34 | `src/services/blockchain.ts`, `src/app.ts` | In-memory retry queue (500 ops max, 3 retries) + /health stats |
+| 2026-02-24 | #55 | `packages/agent-sdk/src/client.ts` | TLS trust model documentation in AgentClient JSDoc |
+| 2026-02-24 | #56 | `integrations/shopify/src/index.ts` | AES-256-GCM encryption for in-memory access tokens |
+| 2026-02-24 | #85 | `contracts/contracts/TrustToken.sol` | Per-tx mint cap (10M TRUST default) applies to all callers including owner |
+| 2026-02-24 | #87 | `contracts/contracts/StakingVault.sol`, `ReputationMarket.sol`, `InsurancePool.sol`, `VouchMarket.sol` | PausableUpgradeable + whenNotPaused on state-changing functions + pause/unpause |

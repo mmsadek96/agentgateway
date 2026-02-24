@@ -65,6 +65,18 @@ function getOrigin(urlStr: string): string {
  * - Executing actions on gateways with automatic certificate management
  * - Capturing Bot Shield access tokens for accessing protected website routes
  *
+ * **TLS Trust Model (#55):**
+ * This client enforces HTTPS for all station and gateway connections and blocks
+ * requests to private/internal IP ranges (SSRF prevention). However, it relies
+ * on the Node.js/OS certificate store for TLS trust — it does not implement
+ * certificate pinning. If your threat model requires pinning (e.g., you are
+ * concerned about CA compromise or MITM with a rogue certificate), you can:
+ *   1. Use a custom `fetch` implementation via `globalThis.fetch` that pins
+ *      the station's TLS certificate fingerprint.
+ *   2. Run behind a service mesh or mTLS proxy that handles pinning at the
+ *      infrastructure layer.
+ * For most deployments, standard HTTPS + CA verification is sufficient.
+ *
  * Usage:
  *   const agent = new AgentClient({
  *     stationUrl: 'https://station.example.com',
@@ -85,6 +97,9 @@ export class AgentClient {
   private stationUrl: string;
   private apiKey: string;
   private agentId: string;
+  // SECURITY (#54): Optional async key provider for secrets manager integration.
+  // When set, resolveApiKey() calls the provider instead of returning the static key.
+  private apiKeyProvider?: () => Promise<string>;
 
   // Certificate caching
   private currentCertificate: string | null = null;
@@ -102,6 +117,19 @@ export class AgentClient {
     this.stationUrl = config.stationUrl.replace(/\/+$/, '');
     this.apiKey = config.apiKey;
     this.agentId = config.agentId;
+    this.apiKeyProvider = config.apiKeyProvider;
+  }
+
+  /**
+   * Resolve the API key. Uses `apiKeyProvider` if set, otherwise returns the static key.
+   * SECURITY (#54): This ensures the key is fetched fresh from a secrets manager
+   * on each request, rather than sitting in process memory indefinitely.
+   */
+  private async resolveApiKey(): Promise<string> {
+    if (this.apiKeyProvider) {
+      return this.apiKeyProvider();
+    }
+    return this.apiKey;
   }
 
   // ─── Station Interaction ───
@@ -136,10 +164,11 @@ export class AgentClient {
       body.scope = effectiveScope;
     }
 
+    const apiKey = await this.resolveApiKey();
     const response = await fetch(`${this.stationUrl}/certificates/request`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
@@ -177,10 +206,11 @@ export class AgentClient {
    * Requests a fresh certificate to get the latest score.
    */
   async getScore(): Promise<number> {
+    const apiKey = await this.resolveApiKey();
     const response = await fetch(`${this.stationUrl}/certificates/request`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ agentId: this.agentId })
