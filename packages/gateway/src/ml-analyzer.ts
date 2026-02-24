@@ -236,8 +236,16 @@ export class MLBehaviorAnalyzer {
             }
           }
         } catch (e) {
-          // Model inference failed for this value — skip it
-          console.warn('[@agent-trust/gateway] ML injection check failed for field:', key);
+          // SECURITY (#49): Fail closed — if ML inference fails, treat it as a potential
+          // threat rather than silently passing. An attacker could craft inputs that crash
+          // the model to bypass detection.
+          console.warn('[@agent-trust/gateway] ML injection check failed for field:', key, '— treating as suspicious');
+          threats.push({
+            type: 'prompt_injection',
+            field: key,
+            confidence: 0,
+            value: `[ML inference error — field blocked as precaution: ${value.substring(0, 50)}...]`
+          });
         }
       }
 
@@ -270,7 +278,14 @@ export class MLBehaviorAnalyzer {
             }
           }
         } catch (e) {
-          console.warn('[@agent-trust/gateway] ML URL check failed for field:', key);
+          // SECURITY (#49): Fail closed for URL checks too
+          console.warn('[@agent-trust/gateway] ML URL check failed for field:', key, '— treating as suspicious');
+          threats.push({
+            type: 'malicious_url',
+            field: key,
+            confidence: 0,
+            value: `[ML inference error — URL blocked as precaution: ${value.substring(0, 100)}]`
+          });
         }
       }
     }
@@ -284,30 +299,50 @@ export class MLBehaviorAnalyzer {
 
   // ─── Helpers ───
 
+  // SECURITY (#48): Limits for extractStrings to prevent DoS via deeply nested params
+  // or objects with thousands of string fields. Without these limits, an attacker can
+  // send { a: { b: { c: { ... 1000 levels deep ... } } } } to cause stack overflow,
+  // or { k1: "x", k2: "x", ... k10000: "x" } to trigger 10,000 ML inference calls.
+  private static readonly MAX_EXTRACT_DEPTH = 10;
+  private static readonly MAX_EXTRACT_STRINGS = 100;
+
   /**
    * Recursively extract string values from nested objects/arrays.
+   * SECURITY (#48): Bounded by MAX_EXTRACT_DEPTH and MAX_EXTRACT_STRINGS.
    */
   private extractStrings(
     obj: Record<string, unknown>,
-    prefix = ''
+    prefix = '',
+    depth = 0
   ): Array<{ key: string; value: string }> {
     const result: Array<{ key: string; value: string }> = [];
 
+    // Stop recursing beyond max depth to prevent stack overflow
+    if (depth >= MLBehaviorAnalyzer.MAX_EXTRACT_DEPTH) {
+      return result;
+    }
+
     for (const [key, value] of Object.entries(obj)) {
+      // Stop collecting once we have enough strings to analyze
+      if (result.length >= MLBehaviorAnalyzer.MAX_EXTRACT_STRINGS) {
+        break;
+      }
+
       const fullKey = prefix ? `${prefix}.${key}` : key;
 
       if (typeof value === 'string') {
         result.push({ key: fullKey, value });
       } else if (Array.isArray(value)) {
-        value.forEach((item, i) => {
+        for (let i = 0; i < value.length && result.length < MLBehaviorAnalyzer.MAX_EXTRACT_STRINGS; i++) {
+          const item = value[i];
           if (typeof item === 'string') {
             result.push({ key: `${fullKey}[${i}]`, value: item });
           } else if (typeof item === 'object' && item !== null) {
-            result.push(...this.extractStrings(item as Record<string, unknown>, `${fullKey}[${i}]`));
+            result.push(...this.extractStrings(item as Record<string, unknown>, `${fullKey}[${i}]`, depth + 1));
           }
-        });
+        }
       } else if (typeof value === 'object' && value !== null) {
-        result.push(...this.extractStrings(value as Record<string, unknown>, fullKey));
+        result.push(...this.extractStrings(value as Record<string, unknown>, fullKey, depth + 1));
       }
     }
 

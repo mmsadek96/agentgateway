@@ -45,6 +45,11 @@ export class StationClient {
   private cachedPublicKey: string | null = null;
   private publicKeyFetchedAt: number = 0;
   private refreshInterval: number;
+  // SECURITY (#46): Promise deduplication for concurrent getPublicKey() calls.
+  // Without this, N concurrent requests hitting an expired cache trigger N parallel
+  // fetches to the station. With deduplication, only 1 fetch is made and all N
+  // callers await the same promise.
+  private pendingKeyFetch: Promise<string> | null = null;
 
   constructor(stationUrl: string, apiKey: string, refreshInterval: number) {
     // SECURITY (#47): Validate station URL to prevent SSRF attacks
@@ -58,6 +63,7 @@ export class StationClient {
   /**
    * Fetch the station's public key (PEM format).
    * Caches the key and only refreshes after the refresh interval expires.
+   * SECURITY (#46): Uses promise deduplication to prevent thundering herd on cache expiry.
    */
   async getPublicKey(): Promise<string> {
     const now = Date.now();
@@ -67,7 +73,26 @@ export class StationClient {
       return this.cachedPublicKey;
     }
 
-    // Fetch from station
+    // If a fetch is already in-flight, reuse it instead of starting another
+    if (this.pendingKeyFetch) {
+      return this.pendingKeyFetch;
+    }
+
+    // Start a single fetch and store the promise so concurrent callers share it
+    this.pendingKeyFetch = this._fetchPublicKey();
+
+    try {
+      const key = await this.pendingKeyFetch;
+      return key;
+    } finally {
+      this.pendingKeyFetch = null;
+    }
+  }
+
+  /**
+   * Internal: Actually fetch the public key from the station.
+   */
+  private async _fetchPublicKey(): Promise<string> {
     const response = await fetch(`${this.stationUrl}/.well-known/station-keys`);
 
     if (!response.ok) {
@@ -83,7 +108,7 @@ export class StationClient {
     }
 
     this.cachedPublicKey = data.pem;
-    this.publicKeyFetchedAt = now;
+    this.publicKeyFetchedAt = Date.now();
 
     return this.cachedPublicKey!;
   }

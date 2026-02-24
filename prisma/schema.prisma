@@ -151,6 +151,10 @@ model GatewayReport {
 
   @@index([agentId])
   @@index([gatewayId])
+  // SECURITY (#31): Enforce idempotency at the database level.
+  // Prevents duplicate reports for the same certificate + gateway combination,
+  // replacing the application-level findFirst check which has a TOCTOU race.
+  @@unique([certificateJti, gatewayId])
   @@map("gateway_reports")
 }
 

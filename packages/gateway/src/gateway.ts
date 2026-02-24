@@ -145,7 +145,10 @@ export class AgentGateway {
     // ─── Protected Action Endpoints ───
 
     // Certificate validation middleware
-    const validateCert = createCertificateMiddleware(this.stationClient);
+    // SECURITY (#3): Pass checkRevocation option to enable remote revocation checks
+    const validateCert = createCertificateMiddleware(this.stationClient, {
+      checkRevocation: this.config.checkRevocation ?? false
+    });
 
     /**
      * POST /actions/:actionName
@@ -183,7 +186,7 @@ export class AgentGateway {
           actions: [{
             actionType: actionName,
             outcome: 'failure',
-            metadata: { reason: 'behavioral_block', params },
+            metadata: { reason: 'behavioral_block', paramKeys: Object.keys(params).slice(0, 20) },
             performedAt: new Date().toISOString()
           }]
         }).catch(err => {
@@ -241,7 +244,7 @@ export class AgentGateway {
                 reason: 'scope_violation',
                 declaredScope: certificate.scope,
                 attemptedAction: actionName,
-                params
+                paramKeys: Object.keys(params).slice(0, 20)
               },
               performedAt: new Date().toISOString()
             }]
@@ -285,7 +288,7 @@ export class AgentGateway {
                 reason: 'ml_threat_detected',
                 threats: mlResult.threats,
                 analysisTimeMs: mlResult.analysisTimeMs,
-                params
+                paramKeys: Object.keys(params).slice(0, 20)
               },
               performedAt: new Date().toISOString()
             }]
@@ -339,6 +342,10 @@ export class AgentGateway {
       req.behaviorFlags = behavior.flags;
 
       // Submit report to station asynchronously (fire-and-forget)
+      // SECURITY (#53): Sanitize params before including in report metadata.
+      // Raw params may contain sensitive data (passwords, tokens, PII).
+      // Only include param keys and types, not raw values.
+      const sanitizedParamKeys = Object.keys(params).slice(0, 20);
       this.stationClient.submitReport({
         agentId: certificate.sub,
         gatewayId: this.config.gatewayId,
@@ -347,7 +354,8 @@ export class AgentGateway {
           actionType: actionName,
           outcome: result.success ? 'success' : 'failure',
           metadata: {
-            params,
+            paramKeys: sanitizedParamKeys,
+            paramCount: Object.keys(params).length,
             behaviorScore: behavior.behaviorScore,
             behaviorFlags: behavior.flags,
             blocked: behavior.blocked

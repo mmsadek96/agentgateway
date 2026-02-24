@@ -246,7 +246,61 @@ class AgentTrust_Station_Client {
             return false;
         }
 
+        // SECURITY (#67): Optional remote revocation check.
+        // Without this, a revoked certificate remains usable until it expires.
+        // Results are cached in a WP transient per JTI for the cert's remaining lifetime.
+        if ( get_option( 'agenttrust_check_revocation', false ) && isset( $payload['jti'] ) ) {
+            $revocation_result = $this->check_revocation( $token, $payload['jti'], $payload['exp'] );
+            if ( false === $revocation_result ) {
+                return false;
+            }
+        }
+
         return $payload;
+    }
+
+    /**
+     * Check if a certificate has been revoked via the Station's verify endpoint.
+     * Results are cached per JTI in a WP transient until the certificate expires.
+     *
+     * SECURITY (#67): Ensures revoked certificates are rejected even before expiry.
+     *
+     * @param string $token The JWT token to verify.
+     * @param string $jti   The certificate's unique identifier.
+     * @param int    $exp   The certificate's expiration timestamp.
+     * @return bool True if the certificate is valid, false if revoked.
+     */
+    private function check_revocation( $token, $jti, $exp ) {
+        $cache_key = 'agenttrust_revoke_' . substr( $jti, 0, 32 );
+        $cached    = get_transient( $cache_key );
+
+        if ( false !== $cached ) {
+            return '1' === $cached;
+        }
+
+        // Ask the station if this certificate is still valid
+        $response = wp_remote_get(
+            $this->station_url . '/certificates/verify?token=' . urlencode( $token ),
+            array(
+                'timeout' => 5,
+                'headers' => array( 'Accept' => 'application/json' ),
+            )
+        );
+
+        if ( is_wp_error( $response ) ) {
+            // Station unreachable — fail open to preserve availability
+            return true;
+        }
+
+        $status = wp_remote_retrieve_response_code( $response );
+        $body   = json_decode( wp_remote_retrieve_body( $response ), true );
+        $valid  = ( 200 === $status && ! empty( $body['data']['valid'] ) );
+
+        // Cache the result until the certificate expires (max 1 hour)
+        $ttl = min( max( $exp - time(), 0 ), 3600 );
+        set_transient( $cache_key, $valid ? '1' : '0', $ttl );
+
+        return $valid;
     }
 
     /**

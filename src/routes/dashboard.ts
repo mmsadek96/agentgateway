@@ -129,8 +129,9 @@ router.get('/api/agents', dashboardAuth, async (req: Request, res: Response) => 
 
     res.json({
       success: true,
+      // SECURITY (#41): Don't expose internal UUIDs in dashboard responses.
+      // Use externalId as the public identifier for agents.
       data: agents.map(a => ({
-        id: a.id,
         externalId: a.externalId,
         developer: a.developer.companyName,
         status: a.status,
@@ -176,8 +177,8 @@ router.get('/api/actions/recent', dashboardAuth, async (req: Request, res: Respo
 
     res.json({
       success: true,
+      // SECURITY (#41): Internal action UUID removed from response
       data: actions.map(a => ({
-        id: a.id,
         agentExternalId: a.agent.externalId,
         agentScore: a.agent.reputationScore,
         agentStatus: a.agent.status,
@@ -478,14 +479,18 @@ router.get('/api/defi', dashboardAuth, async (_req: Request, res: Response) => {
 router.get('/api/agents/:agentId/momentum', dashboardAuth, async (req: Request, res: Response) => {
   try {
     const { agentId } = req.params;
-    const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+    // SECURITY (#41): Look up by externalId instead of internal UUID.
+    // The dashboard should never need to know internal database IDs.
+    const agent = await prisma.agent.findFirst({
+      where: { externalId: agentId }
+    });
     if (!agent) {
       return res.status(404).json({ success: false, error: 'Agent not found' });
     }
 
     // Get last 20 reputation events with timestamps
     const events = await prisma.reputationEvent.findMany({
-      where: { agentId },
+      where: { agentId: agent.id },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });
@@ -518,7 +523,8 @@ router.get('/api/agents/:agentId/momentum', dashboardAuth, async (req: Request, 
     res.json({
       success: true,
       data: {
-        agentId,
+        // SECURITY (#41): Return externalId, not internal UUID
+        agentExternalId: agent.externalId,
         currentScore: agent.reputationScore,
         momentum,
         trend,

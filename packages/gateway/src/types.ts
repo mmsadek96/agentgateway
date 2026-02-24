@@ -31,6 +31,14 @@ export interface GatewayConfig {
 
   /** Bot Shield configuration — enables access token issuance after successful actions */
   botShield?: BotShieldGatewayConfig;
+
+  /**
+   * SECURITY (#3): Enable remote certificate revocation checking.
+   * When true, after local JWT verification, the gateway checks with the station
+   * whether the certificate has been revoked. Results are cached per JTI.
+   * Default: false (local-only verification for backward compatibility).
+   */
+  checkRevocation?: boolean;
 }
 
 // ─── Bot Shield Configuration ───

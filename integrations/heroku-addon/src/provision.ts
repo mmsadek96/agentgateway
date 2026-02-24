@@ -4,7 +4,18 @@ import { getPlan } from "./plans";
 
 const router = Router();
 
-// In-memory store mapping Heroku resource UUID -> developer info
+// SECURITY (#59): WARNING — In-memory store. All provisioned resources are lost on
+// dyno restart/deploy. For production use, replace with a database (e.g., Heroku Postgres).
+// The Station API is the source of truth for developer/agent records, so this primarily
+// affects plan change and deprovision operations during the same dyno lifecycle.
+if (process.env.NODE_ENV === 'production') {
+  console.warn(
+    '[agenttrust-heroku-addon] WARNING: Using in-memory resource store. ' +
+    'Provisioned resource mappings will be lost on dyno restart. ' +
+    'Configure DATABASE_URL for persistent storage in production.'
+  );
+}
+
 const resourceMap = new Map<
   string,
   {

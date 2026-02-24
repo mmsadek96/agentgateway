@@ -14,6 +14,40 @@ const ADDON_PASSWORD = process.env.ADDON_PASSWORD || "REPLACE_WITH_SECRET";
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// SECURITY (#60): Simple rate limiter to prevent resource enumeration via brute-force
+// provisioning attempts. Limits to 30 requests per minute per IP.
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 30;
+
+function rateLimiter(req: Request, res: Response, next: NextFunction): void {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    next();
+    return;
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    res.status(429).json({ error: 'Too many requests. Try again later.' });
+    return;
+  }
+
+  next();
+}
+
+// Cleanup stale rate limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now > entry.resetAt) rateLimitMap.delete(ip);
+  }
+}, 300_000).unref?.();
+
 /**
  * Basic auth middleware for Heroku add-on API endpoints.
  * Heroku sends requests with Basic auth where the password matches the
@@ -49,11 +83,11 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok", service: "agenttrust-heroku-addon" });
 });
 
-// Provision endpoints (protected by Basic Auth)
-app.use("/heroku/resources", basicAuth, provisionRouter);
+// Provision endpoints (protected by Rate Limit + Basic Auth)
+app.use("/heroku/resources", rateLimiter, basicAuth, provisionRouter);
 
-// SSO endpoint (verified by token, not Basic Auth)
-app.use("/heroku/sso", ssoRouter);
+// SSO endpoint (rate limited, verified by token not Basic Auth)
+app.use("/heroku/sso", rateLimiter, ssoRouter);
 
 // ---------------------------------------------------------------------------
 // Start

@@ -2,7 +2,7 @@
 
 **Sources:** Claude Opus audit (70 findings) + Codex audit (16 findings)
 **Date:** 2026-02-23
-**Last Updated:** 2026-02-24 (batch 3)
+**Last Updated:** 2026-02-24 (batch 4)
 **Deduplication:** 9 overlapping findings merged, resulting in 77 unique findings
 
 ---
@@ -11,9 +11,10 @@
 
 | Status | Count | Details |
 |--------|-------|---------|
-| **FIXED** | 41 | #1, #2, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28, #29, #30, #33, #37, #38, #42, #44, #45, #47, #50, #52, #57, #58, #65, #66, #68, #81 |
-| **Open (CRITICAL+HIGH)** | 1 | #3 |
-| **Open (MEDIUM)** | 22 | #31, #32, #34-#36, #39-#41, #43, #46, #48, #49, #51, #53-#56, #59-#64, #67 |
+| **FIXED** | 52 | #1-#5, #6-#18, #19-#31, #33, #37, #38, #40-#50, #52, #53, #57, #58, #60, #65-#68, #81 |
+| **PARTIALLY FIXED** | 2 | #32 (Decimal), #59 (Heroku store warning) |
+| **Open (CRITICAL+HIGH)** | 0 | All HIGH findings fixed! |
+| **Open (MEDIUM)** | 11 | #34-#36, #39, #51, #54-#56, #61-#64 |
 | **Open (LOW+INFO)** | 22 | #69-#80, #82-#91 |
 
 ---
@@ -54,7 +55,12 @@
 - **File:** `packages/gateway/src/middleware/certificate.ts:48`
 - **Issue:** Gateway validates JWT signature/issuer locally but never checks Station revocation. Revoked certs usable until expiry (5 min).
 - **Fix:** Add optional revocation check via `StationClient.verifyRemote()`. Add CRL cache or stapled revocation status.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Added `checkRevocation` option to `createCertificateMiddleware()` and `GatewayConfig`
+  - When enabled, middleware calls `StationClient.verifyRemote()` after local JWT verification
+  - Results cached per JTI in a `revocationCache` Map (max 5,000 entries, auto-cleanup every 5 min)
+  - Fails open if station is unreachable (preserves availability)
+  - Cache entries expire when the certificate expires
 
 ### 4. [X] WordPress Does Not Enforce Certificate Scope
 - **Codex:** #4 HIGH
@@ -296,7 +302,10 @@
 - **Claude:** ST-8.1 MEDIUM
 - **File:** `prisma/schema.prisma:140-155`
 - **Fix:** Add `@@unique([certificateJti, gatewayId])`.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Added `@@unique([certificateJti, gatewayId])` to GatewayReport model in Prisma schema
+  - Removed application-level `findFirst` TOCTOU check — DB constraint catches duplicates atomically
+  - Reports service catches Prisma `P2002` (unique constraint violation) and returns clear error
 
 ### 32. [C] Floating-Point Arithmetic for Financial Values
 - **Claude:** ST-6.2 MEDIUM
@@ -347,12 +356,17 @@
 ### 40. [C] Internal UUIDs Exposed in Reports
 - **Claude:** ST-8.2 MEDIUM
 - **Fix:** Use compound lookup.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Report response now returns `agentExternalId` instead of internal `agentId` UUID
+  - Callers already know the agentId they submitted — echoing internal UUIDs leaks implementation details
 
 ### 41. [C] Dashboard Exposes Internal IDs
 - **Claude:** ST-9.1 MEDIUM
 - **Fix:** Remove internal IDs.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Removed internal `id` (UUID) from `/api/agents` and `/api/actions/recent` responses
+  - Momentum endpoint now accepts `externalId` in URL path instead of internal UUID
+  - Momentum response returns `agentExternalId` instead of internal `agentId`
 
 ### 42. [C] No Explicit Body Size Limit
 - **Claude:** ST-12.1 MEDIUM
@@ -363,7 +377,10 @@
 ### 43. [C] Nonce Cache Memory Exhaustion
 - **Claude:** GW-2 MEDIUM
 - **Fix:** TTL-based eviction + hard upper bound.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batches 2+4)
+  - Already mitigated in batch 2 (#17): Hard upper bound of `maxNonceCache` (default 10,000)
+  - Expired nonces cleaned every 60 seconds
+  - If cache is full of unexpired nonces, requests are rejected rather than evicting (prevents replay window)
 
 ### 44. [C] Secret Minimum Length Mismatch
 - **Claude:** GW-4 MEDIUM
@@ -379,7 +396,10 @@
 ### 46. [C] Public Key Cache Race Condition
 - **Claude:** GW-6 MEDIUM
 - **Fix:** Promise deduplication + PEM validation.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Added `pendingKeyFetch` promise deduplication in `StationClient.getPublicKey()`
+  - When cache expires, only 1 fetch is made — all concurrent callers await the same promise
+  - Prevents thundering herd of N parallel fetches to station on cache expiry
 
 ### 47. [C] SSRF via stationUrl
 - **Claude:** GW-7 MEDIUM
@@ -392,12 +412,18 @@
 ### 48. [C] ML Analyzer DoS via Nested Params
 - **Claude:** GW-9 MEDIUM
 - **Fix:** Max recursion depth (5). Max string count (50).
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Added `MAX_EXTRACT_DEPTH = 10` to prevent stack overflow from deeply nested objects
+  - Added `MAX_EXTRACT_STRINGS = 100` to cap the number of strings extracted for ML inference
+  - Both limits prevent crafted payloads from causing DoS via CPU exhaustion
 
 ### 49. [C] ML Inference Errors Silently Pass
 - **Claude:** GW-10 MEDIUM
 - **Fix:** Fail-closed.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Changed both injection and URL inference catch blocks from skip-and-continue to fail-closed
+  - On ML inference error, the field is now treated as suspicious (threat added with confidence=0)
+  - Prevents attackers from crafting inputs that crash the model to bypass detection
 
 ### 50. [C] Unbounded Session Action Array
 - **Claude:** GW-11 MEDIUM
@@ -421,7 +447,10 @@
 ### 53. [C] Sensitive Params in Station Reports
 - **Claude:** GW-15 MEDIUM
 - **Fix:** reportSanitizer hook.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - All `submitReport()` calls in gateway.ts now send `paramKeys` (field names only) instead of raw `params`
+  - Also includes `paramCount` for analytics without exposing values
+  - Prevents leaking passwords, tokens, PII, or other sensitive param values to the station
 
 ### 54. [C] API Key in Plain Memory (SDK)
 - **Claude:** SDK-27 MEDIUM
@@ -457,12 +486,18 @@
 ### 59. [C] Heroku In-Memory Resource Store
 - **Claude:** H-3 MEDIUM
 - **Fix:** Database-backed storage.
-- **Status:** OPEN
+- **Status:** PARTIALLY FIXED (2026-02-24, batch 4)
+  - Added production startup warning when using in-memory store
+  - Documented that Station API is source of truth for developer/agent records
+  - Full fix (database-backed storage) deferred — requires adding Heroku Postgres dependency
 
 ### 60. [C] Heroku Resource Enumeration
 - **Claude:** H-4 MEDIUM
 - **Fix:** Rate limiting + audit logging.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Added per-IP rate limiter (30 req/min) to Heroku addon provision and SSO routes
+  - Stale rate limit entries cleaned every 5 minutes
+  - Prevents brute-force enumeration of resource UUIDs
 
 ### 61. [C] StakingVault Slash Centralization
 - **Claude:** C-1 MEDIUM
@@ -507,7 +542,11 @@
 - **File:** `integrations/wordpress/includes/class-station-client.php`
 - **Issue:** Same as #3 but specific to WP client path.
 - **Fix:** Add Station verify endpoint call.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24, batch 4)
+  - Added `check_revocation()` method to `AgentTrust_Station_Client`
+  - Calls station's `/certificates/verify` endpoint when `agenttrust_check_revocation` option is enabled
+  - Results cached per JTI in WP transients until certificate expires (max 1 hour)
+  - Fails open if station is unreachable (preserves availability)
 
 ### 68. [X] Behavioral Analytics Conflates Score Failures with Scope Violations
 - **Codex:** #14 LOW-MEDIUM
@@ -611,3 +650,15 @@ All TIER 3 items: **Status: OPEN**
 | 2026-02-24 | #57 | `integrations/wordpress/includes/class-station-client.php` | OpenSSL error logging |
 | 2026-02-24 | #58 | `integrations/wordpress/includes/class-bot-shield.php` | Atomic nonce via wp_cache_add |
 | 2026-02-24 | #66 | `.github/workflows/deploy.yml`, `.github/workflows/ci.yml` | Deploy depends on CI tests |
+| 2026-02-24 | #3 | `packages/gateway/src/middleware/certificate.ts`, `packages/gateway/src/types.ts`, `packages/gateway/src/gateway.ts` | Certificate revocation check (last HIGH!) |
+| 2026-02-24 | #31 | `prisma/schema.prisma`, `src/services/reports.ts` | Unique DB constraint for report idempotency |
+| 2026-02-24 | #40 | `src/services/reports.ts` | Internal UUID removed from report response |
+| 2026-02-24 | #41 | `src/routes/dashboard.ts` | Internal IDs removed from dashboard API responses |
+| 2026-02-24 | #43 | `packages/gateway/src/bot-shield.ts` | Already mitigated by #17 (hard upper bound + TTL cleanup) |
+| 2026-02-24 | #46 | `packages/gateway/src/station-client.ts` | Promise deduplication for public key cache |
+| 2026-02-24 | #48 | `packages/gateway/src/ml-analyzer.ts` | Max depth (10) + max strings (100) in extractStrings |
+| 2026-02-24 | #49 | `packages/gateway/src/ml-analyzer.ts` | ML inference fail-closed (blocks on error) |
+| 2026-02-24 | #53 | `packages/gateway/src/gateway.ts` | Params stripped from station reports (keys only) |
+| 2026-02-24 | #59 | `integrations/heroku-addon/src/provision.ts` | Production warning for in-memory store |
+| 2026-02-24 | #60 | `integrations/heroku-addon/src/index.ts` | Rate limiting (30 req/min per IP) |
+| 2026-02-24 | #67 | `integrations/wordpress/includes/class-station-client.php` | WP revocation check via station verify endpoint |
