@@ -348,4 +348,11 @@ contract VouchMarket is
     // ─── UUPS ───
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /**
+     * SECURITY (#86): Storage gap for future upgrades.
+     * Reserves 50 storage slots to prevent storage layout collisions when
+     * adding new state variables in future implementations.
+     */
+    uint256[50] private __gap;
 }

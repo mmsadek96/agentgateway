@@ -185,4 +185,11 @@ contract TrustGovernor is
      * This prevents the deployer from bypassing governance by retaining owner privileges (#24).
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyGovernance {}
+
+    /**
+     * SECURITY (#86): Storage gap for future upgrades.
+     * Reserves 50 storage slots to prevent storage layout collisions when
+     * adding new state variables in future implementations.
+     */
+    uint256[50] private __gap;
 }

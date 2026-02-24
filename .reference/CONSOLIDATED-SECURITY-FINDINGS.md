@@ -2,7 +2,7 @@
 
 **Sources:** Claude Opus audit (70 findings) + Codex audit (16 findings)
 **Date:** 2026-02-23
-**Last Updated:** 2026-02-24 (batch 6)
+**Last Updated:** 2026-02-24 (batch 7)
 **Deduplication:** 9 overlapping findings merged, resulting in 77 unique findings
 
 ---
@@ -11,11 +11,11 @@
 
 | Status | Count | Details |
 |--------|-------|---------|
-| **FIXED** | 72 | #1-#5, #6-#18, #19-#31, #33, #35, #37-#53, #57, #58, #60, #65-#69, #71-#73, #75, #76, #80-#83, #86, #88-#91 |
-| **PARTIALLY FIXED** | 5 | #32 (Decimal — documented safe), #34 (retry queue), #54 (API key provider), #55 (TLS docs), #56 (AES in-memory), #59 (Heroku store warning), #85 (mint cap), #87 (Pausable code — needs UUPS upgrade) |
+| **FIXED** | 73 | #1-#5, #6-#18, #19-#31, #33, #35, #37-#53, #57, #58, #60, #65-#69, #71-#73, #75, #76, #80-#83, #86, #88-#91 |
+| **PARTIALLY FIXED** | 7 | #32 (Decimal — documented safe), #34 (retry queue), #54 (API key provider), #55 (TLS docs), #56 (AES in-memory), #59 (Heroku store warning), #85 (mint cap), #87 (Pausable code — needs UUPS upgrade) |
 | **Open (CRITICAL+HIGH)** | 0 | All HIGH findings fixed! |
-| **Open (MEDIUM)** | 3 | #36 (wallet arch — operational), #61 (slash centralization — governance), #62 (oracle centralization — TWAP), #63 (premium gaming — API layer), #64 (stale vouches — scheduled job) |
-| **Open (LOW+INFO)** | 5 | #70 (design decision), #74 (standard practice), #77 (needs Redis), #78 (design decision), #79 (design decision), #84 (already handled by WP Settings API) |
+| **Open (MEDIUM)** | 5 | #36 (wallet arch — operational), #61 (slash centralization — governance), #62 (oracle centralization — TWAP), #63 (premium gaming — API layer), #64 (stale vouches — scheduled job) |
+| **Open (LOW+INFO)** | 6 | #70 (design decision), #74 (standard practice), #77 (needs Redis), #78 (design decision), #79 (design decision), #84 (already handled by WP Settings API) |
 
 ---
 
@@ -638,9 +638,11 @@
 - **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added `maxMintPerTx` cap (default 10M TRUST) that applies to ALL callers including owner. Limits blast radius of key compromise. Added `setMaxMintPerTx()` for governance adjustment. Full governance-gated minting requires multi-sig or timelock contract.
 
 ### 86. [C] Storage Gap Missing in UUPS (C-7)
-- **Status:** FIXED (2026-02-24, batch 5)
-  - Added `uint256[50] private __gap` to TrustToken.sol
-  - Reserves 50 storage slots for future upgrades, preventing layout collisions
+- **Status:** FIXED (2026-02-24, batches 5+7)
+  - Added `uint256[50] private __gap` to ALL 8 UUPS contracts:
+    TrustToken, AgentRegistry, CertificateRegistry, ReputationLedger,
+    StakingVault, ReputationMarket, InsurancePool, VouchMarket, TrustGovernor
+  - Reserves 50 storage slots per contract for future upgrades, preventing layout collisions
 
 ### 87. [C] No Pausable on DeFi Contracts (C-8)
 - **Status:** PARTIALLY FIXED (2026-02-24, batch 6) — Added `PausableUpgradeable` to all 4 DeFi contracts (StakingVault, ReputationMarket, InsurancePool, VouchMarket). State-changing functions guarded by `whenNotPaused`. Owner can call `pause()`/`unpause()` for emergency stop. Code is ready; requires UUPS upgrade deployment on-chain.
@@ -758,3 +760,4 @@
 | 2026-02-24 | #56 | `integrations/shopify/src/index.ts` | AES-256-GCM encryption for in-memory access tokens |
 | 2026-02-24 | #85 | `contracts/contracts/TrustToken.sol` | Per-tx mint cap (10M TRUST default) applies to all callers including owner |
 | 2026-02-24 | #87 | `contracts/contracts/StakingVault.sol`, `ReputationMarket.sol`, `InsurancePool.sol`, `VouchMarket.sol` | PausableUpgradeable + whenNotPaused on state-changing functions + pause/unpause |
+| 2026-02-24 | #86 | `contracts/contracts/*.sol` (8 contracts) | Storage gap `__gap[50]` added to all remaining UUPS contracts (7 contracts; TrustToken already had it) |
