@@ -279,7 +279,7 @@ export interface SessionStats {
   uniqueActionsLastMinute: number;
   /** How long the session has been active (ms) */
   sessionDuration: number;
-  /** Number of scope violations (tried actions above their score) */
+  /** Number of score threshold violations (tried actions requiring a higher reputation score) */
   scopeViolations: number;
   /** Number of behavioral flags triggered */
   flagsTriggered: BehaviorFlag[];

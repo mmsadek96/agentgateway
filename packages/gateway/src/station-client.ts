@@ -1,6 +1,41 @@
 import { GatewayReportPayload } from './types';
 
 /**
+ * Validate that a station URL is safe to communicate with (#47).
+ * - Must be HTTPS (or localhost for development)
+ * - Must not target private/internal IPs (SSRF prevention)
+ */
+function validateStationUrl(urlStr: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlStr);
+  } catch {
+    throw new Error(`Invalid station URL: ${urlStr}`);
+  }
+
+  const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+  if (parsed.protocol !== 'https:' && !isLocalhost) {
+    throw new Error(`Station URL must use HTTPS: ${urlStr}`);
+  }
+
+  if (!isLocalhost) {
+    const hostname = parsed.hostname;
+    // Block private IPv4 ranges
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.)/.test(hostname)) {
+      throw new Error(`Station URL targets a private IP address: ${hostname}`);
+    }
+    // Block private IPv6
+    if (/^(fc|fd|fe80)/i.test(hostname)) {
+      throw new Error(`Station URL targets a private IPv6 address: ${hostname}`);
+    }
+    // Block cloud metadata endpoints
+    if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') {
+      throw new Error(`Station URL targets a cloud metadata endpoint: ${hostname}`);
+    }
+  }
+}
+
+/**
  * HTTP client for communicating with the Agent Trust Station.
  * Handles public key caching and report submission.
  */
@@ -12,6 +47,8 @@ export class StationClient {
   private refreshInterval: number;
 
   constructor(stationUrl: string, apiKey: string, refreshInterval: number) {
+    // SECURITY (#47): Validate station URL to prevent SSRF attacks
+    validateStationUrl(stationUrl);
     // Strip trailing slash
     this.stationUrl = stationUrl.replace(/\/+$/, '');
     this.apiKey = apiKey;

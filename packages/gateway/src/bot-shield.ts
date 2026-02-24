@@ -26,8 +26,10 @@ export class BotShield {
   private cleanupInterval: ReturnType<typeof setInterval>;
 
   constructor(config: BotShieldConfig) {
-    if (!config.secret || config.secret.length < 16) {
-      throw new Error('BotShield requires a secret of at least 16 characters');
+    // SECURITY (#44): Require 32-character minimum to match access-token recommendation
+    // and ensure sufficient entropy for HMAC-SHA256 (256 bits = 32 hex chars).
+    if (!config.secret || config.secret.length < 32) {
+      throw new Error('BotShield requires a secret of at least 32 characters');
     }
 
     this.config = {

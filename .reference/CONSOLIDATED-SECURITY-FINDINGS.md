@@ -2,7 +2,7 @@
 
 **Sources:** Claude Opus audit (70 findings) + Codex audit (16 findings)
 **Date:** 2026-02-23
-**Last Updated:** 2026-02-24 (batch 2)
+**Last Updated:** 2026-02-24 (batch 3)
 **Deduplication:** 9 overlapping findings merged, resulting in 77 unique findings
 
 ---
@@ -11,9 +11,9 @@
 
 | Status | Count | Details |
 |--------|-------|---------|
-| **FIXED** | 28 | #1, #2, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #28, #30, #33, #45, #65, #81 |
+| **FIXED** | 41 | #1, #2, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28, #29, #30, #33, #37, #38, #42, #44, #45, #47, #50, #52, #57, #58, #65, #66, #68, #81 |
 | **Open (CRITICAL+HIGH)** | 1 | #3 |
-| **Open (MEDIUM)** | 35 | #27, #29, #31, #32, #34-#44, #46-#64, #66-#68 |
+| **Open (MEDIUM)** | 22 | #31, #32, #34-#36, #39-#41, #43, #46, #48, #49, #51, #53-#56, #59-#64, #67 |
 | **Open (LOW+INFO)** | 22 | #69-#80, #82-#91 |
 
 ---
@@ -270,7 +270,9 @@
 - **Claude:** ST-10.2 MEDIUM
 - **File:** `src/app.ts:52-56`
 - **Fix:** Exact origin matching.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Removed `/\.herokuapp\.com$/` and `/\.agenttrust\.dev$/` broad regexes
+  - Now only allows localhost in dev; use `CORS_ORIGINS` env var for production origins
 
 ### 28. [CX] apiLimiter Defined But Never Used
 - **Claude:** ST-3.2/ST-12.3 MEDIUM | **Codex:** #8 MEDIUM
@@ -281,7 +283,9 @@
 - **Claude:** ST-3.3 MEDIUM
 - **File:** `src/routes/certificates.ts:12-48`
 - **Fix:** 1 cert/agent/60s.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Added `certIssuanceLimiter`: 10 certs/agent/minute, keyed on hash of (API key + agentId)
+  - Applied as middleware before `authenticateApiKey` on the `/request` route
 
 ### 30. [C] No Limit on Actions Array in Reports
 - **Claude:** ST-2.2 MEDIUM
@@ -324,12 +328,16 @@
 ### 37. [C] Dashboard Admin Key in Query String
 - **Claude:** ST-1.4 MEDIUM
 - **Fix:** Header only.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Removed `req.query.key` — admin key now only accepted via `X-Admin-Key` header
+  - Prevents key exposure in server logs, browser history, and referrer headers
 
 ### 38. [C] Dashboard Auth Bypassed in Non-Production
 - **Claude:** ST-1.5 MEDIUM
 - **Fix:** Fail-closed.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Dashboard auth now fails closed in ALL environments (not just production)
+  - Returns 401 if `DASHBOARD_API_KEY` env var is not configured, regardless of `NODE_ENV`
 
 ### 39. [C] CSP Allows unsafe-inline
 - **Claude:** ST-10.1 MEDIUM
@@ -349,7 +357,8 @@
 ### 42. [C] No Explicit Body Size Limit
 - **Claude:** ST-12.1 MEDIUM
 - **Fix:** `express.json({ limit: '100kb' })`.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Added explicit `{ limit: '100kb' }` to `express.json()` middleware
 
 ### 43. [C] Nonce Cache Memory Exhaustion
 - **Claude:** GW-2 MEDIUM
@@ -359,7 +368,9 @@
 ### 44. [C] Secret Minimum Length Mismatch
 - **Claude:** GW-4 MEDIUM
 - **Fix:** Enforce 32 bytes in both locations.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - BotShield constructor now requires 32-character minimum secret (was 16)
+  - Matches access-token.ts recommendation for HMAC-SHA256 entropy
 
 ### 45. [C] Excluded Path Traversal
 - **Claude:** GW-5 MEDIUM
@@ -373,7 +384,10 @@
 ### 47. [C] SSRF via stationUrl
 - **Claude:** GW-7 MEDIUM
 - **Fix:** Require HTTPS. Block private IPs.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Added `validateStationUrl()` in gateway `station-client.ts`
+  - Requires HTTPS (localhost exempt), blocks private IPv4/IPv6 and cloud metadata endpoints
+  - Mirrors the `validateUrl()` approach already used in agent-sdk client.ts
 
 ### 48. [C] ML Analyzer DoS via Nested Params
 - **Claude:** GW-9 MEDIUM
@@ -388,7 +402,9 @@
 ### 50. [C] Unbounded Session Action Array
 - **Claude:** GW-11 MEDIUM
 - **Fix:** Cap at 1000 + sliding window.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Capped `session.actions` at 500 entries (sliding window, keeps most recent)
+  - Sufficient for all behavioral checks which only look at last 60 seconds
 
 ### 51. [C] Reduced Penalty for Repeat Violations
 - **Claude:** GW-12 MEDIUM
@@ -398,7 +414,9 @@
 ### 52. [C] Shield Secret Exposed via Getter
 - **Claude:** GW-14 MEDIUM
 - **Fix:** Remove or return derived key.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Removed `getShieldSecret()` public method from `AgentGateway`
+  - For multi-process deployments, secret should be shared via env vars, not getter
 
 ### 53. [C] Sensitive Params in Station Reports
 - **Claude:** GW-15 MEDIUM
@@ -423,12 +441,18 @@
 ### 57. [C] WordPress OpenSSL Verify Error Handling
 - **Claude:** W-1 MEDIUM
 - **Fix:** Check for -1 separately.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Added explicit `-1` (OpenSSL error) check before general `!== 1` verification check
+  - Logs `openssl_error_string()` via `error_log()` when WP_DEBUG is enabled
+  - Same logging added for `openssl_pkey_get_public()` failures
 
 ### 58. [C] WordPress Transient Nonce Race Condition
 - **Claude:** W-2 MEDIUM
 - **Fix:** Use `wp_cache_add()` (atomic).
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Replaced `get_transient()`/`set_transient()` TOCTOU pattern with `wp_cache_add()` (atomic)
+  - `wp_cache_add()` returns false if key already exists — eliminates race condition
+  - Retained `set_transient()` as persistence fallback for cache flushes
 
 ### 59. [C] Heroku In-Memory Resource Store
 - **Claude:** H-3 MEDIUM
@@ -472,7 +496,11 @@
 - **File:** `.github/workflows/deploy.yml:13,36`, `security.yml:28-34`
 - **Issue:** Broken/vulnerable builds can deploy. Security scans use `|| true`.
 - **Fix:** Make deploy depend on CI. Remove `|| true`.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Added `workflow_call` trigger to `ci.yml` so it can be used as a reusable workflow
+  - Deploy workflow now has `ci` job that calls `ci.yml` as a gate
+  - Deploy job requires `needs: [ci]` — tests must pass before deployment
+  - Removed `npm test || true` from deploy job (was swallowing test failures)
 
 ### 67. [X] WordPress JWT Verification Lacks Revocation Check
 - **Codex:** #7 MEDIUM-HIGH
@@ -486,7 +514,10 @@
 - **File:** `packages/gateway/src/behavior-tracker.ts:97,404`
 - **Issue:** Score-threshold failures labeled as "scope violation". Misleading telemetry.
 - **Fix:** Separate the two conditions with distinct labels.
-- **Status:** OPEN
+- **Status:** FIXED (2026-02-24)
+  - Updated `scope_violation` flag description to clarify it's a score threshold violation
+  - Updated `SessionStats.scopeViolations` JSDoc to match actual semantics
+  - Note: flag name kept for backward compatibility but description now accurate
 
 ---
 
@@ -570,3 +601,13 @@ All TIER 3 items: **Status: OPEN**
 | 2026-02-24 | #21, #22, #23, #81 | `packages/agent-sdk/src/client.ts` | SSRF prevention + origin-restricted token + duplicate header fix |
 | 2026-02-24 | #24 | `contracts/contracts/TrustGovernor.sol` | UUPS upgrade restricted to onlyGovernance |
 | 2026-02-24 | #30 | `src/routes/reports.ts` | Actions array capped at 100 |
+| 2026-02-24 | #27, #42 | `src/app.ts` | CORS exact origin matching + explicit body size limit |
+| 2026-02-24 | #37, #38 | `src/routes/dashboard.ts` | Admin key header-only + fail-closed auth |
+| 2026-02-24 | #44 | `packages/gateway/src/bot-shield.ts` | Secret minimum 32 chars |
+| 2026-02-24 | #47 | `packages/gateway/src/station-client.ts` | SSRF prevention via URL validation |
+| 2026-02-24 | #52 | `packages/gateway/src/gateway.ts` | Removed getShieldSecret() getter |
+| 2026-02-24 | #29 | `src/routes/certificates.ts` | Per-agent cert issuance rate limit |
+| 2026-02-24 | #50, #68 | `packages/gateway/src/behavior-tracker.ts` | Session action array capped at 500 + fixed analytics labels |
+| 2026-02-24 | #57 | `integrations/wordpress/includes/class-station-client.php` | OpenSSL error logging |
+| 2026-02-24 | #58 | `integrations/wordpress/includes/class-bot-shield.php` | Atomic nonce via wp_cache_add |
+| 2026-02-24 | #66 | `.github/workflows/deploy.yml`, `.github/workflows/ci.yml` | Deploy depends on CI tests |

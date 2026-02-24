@@ -228,16 +228,24 @@ class AgentTrust_Bot_Shield {
             }
         }
 
-        // Nonce enforcement (prevent replay) using WP transients
+        // Nonce enforcement (prevent replay).
+        // SECURITY (#58): Use wp_cache_add() for atomic check-and-set to eliminate the
+        // TOCTOU race condition in the previous get_transient/set_transient approach.
+        // wp_cache_add() returns false if the key already exists (atomic in Redis/Memcached).
+        // Fall back to set_transient for persistent storage (survives cache flushes).
         if ( $this->config['enforce_nonce'] && isset( $payload['nonce'] ) ) {
             $nonce_key = 'agenttrust_nonce_' . substr( $payload['nonce'], 0, 32 );
+            $ttl       = (int) $this->config['max_token_age'] + 10;
 
-            if ( get_transient( $nonce_key ) ) {
-                return false; // Already used
+            // Atomic add: returns false if key already exists (nonce already used).
+            $added = wp_cache_add( $nonce_key, 1, 'agenttrust_nonces', $ttl );
+
+            if ( false === $added ) {
+                return false; // Nonce already used (replay detected)
             }
 
-            // Mark as used with TTL slightly longer than token age
-            set_transient( $nonce_key, 1, $this->config['max_token_age'] + 10 );
+            // Also store as transient for persistence across cache flushes
+            set_transient( $nonce_key, 1, $ttl );
         }
 
         return $payload;

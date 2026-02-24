@@ -100,6 +100,14 @@ export class BehaviorTracker {
     session.actions.push(action);
     session.lastActivityAt = now;
 
+    // SECURITY (#50): Cap session action array to prevent unbounded memory growth.
+    // Behavioral checks only look at the last 60 seconds, so keeping 500 entries
+    // (well above maxActionsPerMinute=30) preserves all analysis accuracy.
+    const MAX_SESSION_ACTIONS = 500;
+    if (session.actions.length > MAX_SESSION_ACTIONS) {
+      session.actions = session.actions.slice(-MAX_SESSION_ACTIONS);
+    }
+
     // If already blocked, don't re-analyze
     if (session.blocked) {
       return { behaviorScore: session.behaviorScore, flags: Array.from(session.flags), blocked: true };
@@ -401,7 +409,7 @@ export class BehaviorTracker {
       'high_failure_rate': `Agent has ${this.config.maxFailuresBeforeFlag}+ failed actions (possible probing)`,
       'action_enumeration': `Agent tried ${this.config.maxUniqueActionsPerMinute}+ unique actions in one minute (scanning)`,
       'repeated_action': `Agent repeated the same action ${this.config.maxRepeatedActionsPerMinute}+ times per minute (automation)`,
-      'scope_violation': 'Agent attempted an action above their trust level',
+      'scope_violation': 'Agent attempted an action requiring a higher reputation score (score threshold violation)',
       'session_anomaly': 'Unusual session pattern detected',
       'burst_detected': 'Sudden burst of activity after idle period',
       'velocity_spike': 'Metric rate-of-change exceeds threshold (ramping attack detected)',

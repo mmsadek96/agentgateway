@@ -443,13 +443,10 @@ export class AgentGateway {
     return shield.middleware();
   }
 
-  /**
-   * Get the shield secret for advanced use cases (e.g., different-process deployments).
-   * Returns null if Bot Shield is not enabled.
-   */
-  getShieldSecret(): string | null {
-    return this.shieldEnabled ? this.shieldSecret : null;
-  }
+  // SECURITY (#52): getShieldSecret() removed — exposing the raw HMAC secret via a public
+  // getter risks accidental logging or serialization. For different-process deployments,
+  // configure the secret explicitly via environment variables (e.g., SHIELD_SECRET)
+  // on both the gateway and shield processes.
 
   /**
    * Check if Bot Shield is enabled on this gateway.

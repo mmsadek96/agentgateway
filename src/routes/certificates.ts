@@ -1,15 +1,32 @@
 import { Router, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 import { authenticateApiKey, AuthenticatedRequest } from '../middleware/auth';
 import { issueCertificate, verifyCertificate } from '../services/certificates';
 
 const router = Router();
+
+// SECURITY (#29): Per-agent rate limit on certificate issuance.
+// Prevents a single agent from flooding the station with cert requests.
+// Keys on a hash of (API key + agentId) to limit per-agent, not just per-developer.
+const certIssuanceLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 certificates per agent per minute
+  keyGenerator: (req: Request) => {
+    const authHeader = req.headers.authorization || '';
+    const body = req.body as Record<string, unknown> | undefined;
+    const agentId = body?.agentId || '';
+    return crypto.createHash('sha256').update(`${authHeader}:${agentId}`).digest('hex').slice(0, 16);
+  },
+  message: { success: false, error: 'Too many certificate requests for this agent. Please try again later.' }
+});
 
 /**
  * POST /certificates/request
  * Agent requests a clearance certificate from the station.
  * Requires developer API key authentication.
  */
-router.post('/request', authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/request', certIssuanceLimiter, authenticateApiKey, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const developerId = req.developer!.id;
     const { agentId, scope } = req.body;

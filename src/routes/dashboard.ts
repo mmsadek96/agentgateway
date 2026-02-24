@@ -8,18 +8,17 @@ const router = Router();
 // ─── Admin key guard for dashboard API ───
 function dashboardAuth(req: Request, res: Response, next: NextFunction): void {
   const adminKey = process.env.DASHBOARD_API_KEY;
+  // SECURITY (#38): Fail closed in ALL environments — never allow unauthenticated access.
+  // Previously, dev/test environments allowed public access when key was not configured.
   if (!adminKey) {
-    // In production, fail closed — require admin key
-    if (process.env.NODE_ENV === 'production') {
-      res.status(401).json({ success: false, error: 'DASHBOARD_API_KEY not configured' });
-      return;
-    }
-    next(); // No key configured in dev = public access
+    res.status(401).json({ success: false, error: 'DASHBOARD_API_KEY not configured' });
     return;
   }
-  const provided = (req.headers['x-admin-key'] as string) || (req.query.key as string);
+  // SECURITY (#37): Only accept admin key via header, NOT query string.
+  // Query strings appear in server logs, browser history, and referrer headers.
+  const provided = req.headers['x-admin-key'] as string;
   if (provided !== adminKey) {
-    res.status(401).json({ success: false, error: 'Dashboard access requires admin key' });
+    res.status(401).json({ success: false, error: 'Dashboard access requires admin key (via X-Admin-Key header)' });
     return;
   }
   next();

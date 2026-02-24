@@ -6,11 +6,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  # SECURITY (#66): Run CI tests before deploying. Previously `needs: []` meant
+  # deploy could proceed even when tests fail. This calls the CI workflow first.
+  ci:
+    name: CI Gate
+    uses: ./.github/workflows/ci.yml
+
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    # Only deploy after CI passes
-    needs: []
+    # Only deploy after CI passes — tests, build, and contracts must all succeed
+    needs: [ci]
 
     steps:
       - name: Checkout code
@@ -27,13 +33,6 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
-
-      - name: Run tests
-        env:
-          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/test"
-          JWT_SECRET: "deploy-test-secret"
-          NODE_ENV: test
-        run: npm test || true  # Tests may fail without real DB; Heroku build handles this
 
       - name: Build
         run: npm run build

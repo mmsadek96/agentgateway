@@ -47,17 +47,19 @@ app.use(helmet({
 }));
 
 // Middleware
+// CORS: Use explicit origin list from env. In development, allow localhost.
+// SECURITY (#27): No broad wildcard regexes like *.herokuapp.com — any Heroku app
+// could make credentialed cross-origin requests. Use CORS_ORIGINS env var in production.
 app.use(cors({
   origin: process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',')
+    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
     : [
-        /\.herokuapp\.com$/,
-        /\.agenttrust\.dev$/,
         /^https?:\/\/localhost(:\d+)?$/,
       ],
   credentials: true,
 }));
-app.use(express.json());
+// SECURITY (#42): Explicit body size limit to prevent memory exhaustion via large payloads
+app.use(express.json({ limit: '100kb' }));
 
 // Rate limiting — separate limits for authenticated vs public.
 // API limiter keys on API key hash (not IP) to prevent X-Forwarded-For bypass (#14).

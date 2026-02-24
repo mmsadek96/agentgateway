@@ -190,13 +190,27 @@ class AgentTrust_Station_Client {
         }
 
         // Verify the RS256 signature.
+        // SECURITY (#57): openssl_verify returns 1 on success, 0 on failure, -1 on error.
+        // We must check strictly for === 1 and log OpenSSL errors when -1 is returned
+        // so administrators can diagnose misconfigured certificates or missing extensions.
         $public_key = openssl_pkey_get_public( $public_key_pem );
         if ( false === $public_key ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'AgentTrust: Failed to parse public key - ' . openssl_error_string() );
+            }
             return false;
         }
 
         $data_to_verify = $header_b64 . '.' . $payload_b64;
         $verified = openssl_verify( $data_to_verify, $signature, $public_key, OPENSSL_ALGO_SHA256 );
+
+        if ( -1 === $verified ) {
+            // OpenSSL internal error — log for debugging, don't expose to caller.
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'AgentTrust: OpenSSL verify error - ' . openssl_error_string() );
+            }
+            return false;
+        }
 
         if ( 1 !== $verified ) {
             // Signature verification failed. Try refreshing the public key once.
@@ -207,10 +221,16 @@ class AgentTrust_Station_Client {
 
             $public_key = openssl_pkey_get_public( $public_key_pem );
             if ( false === $public_key ) {
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'AgentTrust: Failed to parse refreshed public key - ' . openssl_error_string() );
+                }
                 return false;
             }
 
             $verified = openssl_verify( $data_to_verify, $signature, $public_key, OPENSSL_ALGO_SHA256 );
+            if ( -1 === $verified && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'AgentTrust: OpenSSL verify error (retry) - ' . openssl_error_string() );
+            }
             if ( 1 !== $verified ) {
                 return false;
             }
